@@ -36,6 +36,12 @@ or pixel clicks.
 It is built for [GPUI](https://gpui.rs), the GPU-accelerated UI framework behind Zed, and the core
 has no UI dependency at all.
 
+> [!WARNING]
+> **rust-use is in beta.** It is pre-1.0, and APIs, the compact format and the set of behaviors may
+> change between minor releases (0.1 → 0.2) while the design settles. Pin a minor version, read the
+> [changelog](CHANGELOG.md) before upgrading, and please
+> [report what breaks](https://github.com/better-vault/rust-use/issues/new?template=bug_report.yml).
+
 ## Why rust-use
 
 - 🎯 **Behaviors, not pixels.** An agent calls `board move e2e4`, not "find the square, click

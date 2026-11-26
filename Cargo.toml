@@ -46,6 +46,15 @@ expect_used = "warn"
 # Its suggested rewrite (`assert_eq!(v, [] as [T; 0])`) reads worse than `assert!(v.is_empty())`.
 assert_is_empty = "allow"
 
+# Dependencies (gpui and its native stack in particular) are huge with full debug info. Keep
+# line tables for our own crates' backtraces and drop debug info for everything else; this cuts
+# a debug build of the workspace by more than half.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

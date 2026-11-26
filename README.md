@@ -36,6 +36,16 @@ or pixel clicks.
 It is built for [GPUI](https://gpui.rs), the GPU-accelerated UI framework behind Zed, and the core
 has no UI dependency at all.
 
+<p align="center">
+  <img src=".github/assets/race.gif" width="960" alt="Two chess windows side by side, each played by Claude Code from the same prompt. Left, through generic UI automation over MCP, the agent is still clicking squares after 30 seconds. Right, through rust-use over MCP, the game finished in checkmate after 8.5 seconds." />
+</p>
+
+<p align="center">
+  <sub>Claude Code plays the same game in the same app, started at the same moment. Left: generic UI
+  automation over MCP. Right: rust-use over MCP. Real time, not sped up.
+  <a href=".github/assets/race.mp4">Full-quality video</a> · <a href="#benchmark">numbers</a></sub>
+</p>
+
 > [!WARNING]
 > **rust-use is in beta.** It is pre-1.0, and APIs, the compact format and the set of behaviors may
 > change between minor releases (0.1 → 0.2) while the design settles. Pin a minor version, read the

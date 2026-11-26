@@ -15,11 +15,13 @@ set -euo pipefail
 
 model=sonnet
 seconds=40
+only=
 while (($#)); do
   case "$1" in
     --model) model=$2; shift 2 ;;
     --seconds) seconds=$2; shift 2 ;;
-    *) echo "usage: $0 [--model M] [--seconds N]" >&2; exit 2 ;;
+    --only) only=$2; shift 2 ;;
+    *) echo "usage: $0 [--model M] [--seconds N] [--only generic|rust-use]" >&2; exit 2 ;;
   esac
 done
 
@@ -27,11 +29,26 @@ here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../.." && pwd)
 out="$here/out"
 mkdir -p "$out"
+# screencapture will not overwrite a file, so start from a clean output folder.
+if [[ -z $only ]]; then
+  rm -f "$out"/*.mov "$out"/*.jsonl
+else
+  rm -f "$out/$only.mov" "$out/$only.jsonl"
+fi
+rm -f "$out"/race.* "$out"/frame-*.png
 cd "$root"
 cargo build --release -q -p chess-demo -p rust-use-cli -p chess-mcp-baseline
 export PATH="$root/target/release:$PATH"
 tmp=$(mktemp -d)
-trap 'pkill -f "target/release/chess-demo" || true; rm -rf "$tmp"' EXIT
+app=""
+stop_app() {
+  if [[ -n $app ]]; then
+    kill "$app" 2>/dev/null || true
+    wait "$app" 2>/dev/null || true
+  fi
+  app=""
+}
+trap 'stop_app; rm -rf "$tmp"' EXIT
 
 cat > "$tmp/window.swift" <<'EOF'
 import CoreGraphics
@@ -59,9 +76,15 @@ done
 
 record() { # name banner config allowed interface
   local name=$1 banner=$2 cfg=$3 allowed=$4 interface=$5
-  pkill -f "target/release/chess-demo" || true
-  sleep 1
+  # Stop the previous run's window by pid: launched through PATH, its command line is just
+  # `chess-demo`, so matching on the binary's path finds nothing.
+  stop_app
+  if rust-use list | grep -qx chess; then
+    echo "another chess demo is already serving \`chess\`; close it first" >&2
+    exit 1
+  fi
   RUST_USE_CHESS_BANNER="$banner" chess-demo >/dev/null 2>&1 &
+  app=$!
   sleep 3
   local rect
   rect=$(swift "$tmp/window.swift")
@@ -76,15 +99,15 @@ record() { # name banner config allowed interface
   (cd "$work" && claude -p "${prompt//\{\{INTERFACE\}\}/$interface}" \
     --output-format stream-json --verbose --no-session-persistence --setting-sources "" \
     --strict-mcp-config --mcp-config "$tmp/$cfg" --tools "" --allowedTools "$allowed" \
-    --model "$model" --max-budget-usd 3) > "$out/$name.jsonl" || true
+    --model "$model" --max-budget-usd 3 < /dev/null) > "$out/$name.jsonl" || true
   wait "$rec"
   rust-use --app chess snapshot | grep -q "status=checkmate" \
     || echo "warning: $name did not finish the game" >&2
 }
 
-record generic "Generic UI automation · MCP" mcp-baseline.json 'mcp__ui-automation__*' \
+[[ $only == rust-use ]] || record generic "Generic UI automation · MCP" mcp-baseline.json 'mcp__ui-automation__*' \
   'Operate the app through the ui-automation tools.'
-record rust-use "rust-use · MCP" mcp-rust-use.json 'mcp__rust-use__*' \
+[[ $only == generic ]] || record rust-use "rust-use · MCP" mcp-rust-use.json 'mcp__rust-use__*' \
   'Operate the app through the rust-use tools.'
 
 # Both recordings start one second before their reset; drop that second so t=0 is the start

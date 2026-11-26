@@ -69,6 +69,17 @@ headless with `--output-format stream-json`. It then verifies the final position
 cache, duration, cost, turns) and counts its `tool_use` blocks. It writes the medians to
 `results/claude-<date>.json`. Raw transcripts stay in `results/raw/`, which is not committed.
 
+## The race video
+
+```sh
+bash bench/video/record.sh            # needs macOS, ffmpeg, and the screen for ~1.5 minutes
+```
+
+This records the chess window during one real Claude Code session per interface, generic UI
+automation over MCP and rust-use over MCP. Each window's run timer starts when the counters are
+reset just before the session launches. The two recordings are then stacked side by side from that
+shared start, so the video in the README is a real-time race. Output goes to `bench/video/out/`.
+
 ## Results
 
 See [`results/`](results) and the table in the [README](../README.md#benchmark). Numbers are

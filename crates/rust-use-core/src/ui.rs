@@ -476,7 +476,10 @@ impl<P: Primitive> Handle<P> {
         &self.ui
     }
     /// Set the human label and return the handle.
-    #[must_use]
+    ///
+    /// Not `#[must_use]`: `ui.mount(x).label("Mute");` without keeping the handle is a normal way
+    /// to mount a component, since dropping a handle leaves the component mounted.
+    #[allow(clippy::return_self_not_must_use)]
     pub fn label(self, label: impl Into<String>) -> Self {
         self.set_label(label);
         self

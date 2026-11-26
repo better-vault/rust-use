@@ -1,0 +1,84 @@
+# Publishing starts when the GitHub release goes live, so a tag push can precede
+# the release notes and the decision to ship. Manual runs are for validation.
+#
+# crates.io trusted publishing exchanges a GitHub OIDC identity for a short-lived
+# registry token. For the first release, set the CARGO_REGISTRY_TOKEN repository
+# secret to a crates.io token that can publish new crates.
+#
+# Once the crates exist, register this repository and publish.yml as a trusted
+# publisher on crates.io for each crate, then remove the bootstrap secret.
+name: Publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Run leaf-crate publishing checks after the build and tests
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref_name, 'v')
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - run: cargo test --workspace --all-features
+
+      - name: Check the tag matches the workspace version
+        if: github.event_name == 'release'
+        shell: bash
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 | jq -er '.packages[] | select(.name=="rust-use") | .version')
+          if [[ "${GITHUB_REF_NAME#v}" != "$version" ]]; then
+            echo "::error::Release tag $GITHUB_REF_NAME must match workspace version v$version."
+            exit 1
+          fi
+
+      # Trusted publishing requires existing crates. Allow the bootstrap token
+      # to take over if OIDC authentication fails on the first release.
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: auth
+        if: github.event_name == 'release'
+        continue-on-error: true
+
+      - name: Publish crates in dependency order
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token || secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          metadata=$(cargo metadata --no-deps --format-version 1)
+          for crate in rust-use-core rust-use-macros rust-use-agent rust-use-gpui rust-use-cli rust-use; do
+            version=$(jq -er --arg crate "$crate" '.packages[] | select(.name==$crate) | .version' <<< "$metadata")
+            # crates.io refuses API requests without a descriptive User-Agent.
+            status=$(curl --silent --show-error --retry 3 --max-time 30 \
+              --user-agent "rust-use-release (https://github.com/better-vault/rust-use)" \
+              --output /dev/null --write-out '%{http_code}' \
+              "https://crates.io/api/v1/crates/$crate/$version")
+            case "$status" in
+              200) echo "$crate $version is already published" ;;
+              404) cargo publish -p "$crate" ;;
+              *) echo "::error::crates.io returned HTTP $status for $crate $version."; exit 1 ;;
+            esac
+          done
+
+      - name: Dry-run publishing for leaf crates
+        if: github.event_name == 'workflow_dispatch' && inputs.dry-run
+        # Cargo verifies packages against crates.io, where workspace dependencies
+        # are unavailable before the first release. These crates have none.
+        run: |
+          cargo publish -p rust-use-core --dry-run
+          cargo publish -p rust-use-macros --dry-run
+          cargo publish -p rust-use-cli --dry-run

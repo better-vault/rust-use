@@ -12,5 +12,8 @@ rust-use = { path = "../../crates/rust-use", features = ["gpui", "ipc"] }
 shakmaty = "0.30"
 serde_json.workspace = true
 
+[dev-dependencies]
+usvg = { version = "0.45", default-features = false }
+
 [lints]
 workspace = true

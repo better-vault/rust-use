@@ -4,7 +4,9 @@ mod theme;
 
 pub(crate) use board::Pieces;
 use chess_demo::ChessApp;
-use gpui::{App, Context, FocusHandle, KeyBinding, Task, Window, actions, div, prelude::*, rgb};
+use gpui::{
+    App, Context, FocusHandle, KeyBinding, Task, Window, actions, div, prelude::*, px, rgb,
+};
 use rust_use::prelude::{ChangeSource, UiBinding, UiExt};
 
 actions!(chess, [Undo, NewGame]);
@@ -59,6 +61,7 @@ impl Render for ChessWindow {
             }))
             .on_action(cx.listener(|this, _: &NewGame, _, _| this.invoke("reset")))
             .size_full()
+            .pt(px(28.))
             .bg(rgb(theme::BACKGROUND))
             .text_color(rgb(theme::TEXT))
             .flex()

@@ -128,3 +128,20 @@ pub(super) fn board(state: &Board, handle: &Handle<Board>) -> Div {
             }))
         }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ASSETS;
+
+    #[test]
+    fn piece_svgs_parse() -> Result<(), String> {
+        let options = usvg::Options::default();
+        for &(path, bytes) in ASSETS
+            .iter()
+            .filter(|(path, _)| path.starts_with("pieces/"))
+        {
+            usvg::Tree::from_data(bytes, &options).map_err(|err| format!("{path}: {err}"))?;
+        }
+        Ok(())
+    }
+}

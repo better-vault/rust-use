@@ -1,9 +1,11 @@
-use super::theme::{BACKGROUND, BOARD_SIZE, CARD, DARK, LIGHT, MUTED, PANEL_WIDTH};
+use super::theme::{
+    BACKGROUND, BOARD_SIZE, BUTTON, BUTTON_HOVER, CARD, DARK, MUTED, PANEL_WIDTH, TEXT,
+};
 use chess_demo::{
     Board, ChessApp,
     metrics::{Traffic, Transport},
 };
-use gpui::{Div, FontWeight, div, prelude::*, px, rgb};
+use gpui::{Div, FontFeatures, FontWeight, TextStyle, div, prelude::*, px, rgb};
 use rust_use::prelude::HandleExt;
 
 fn card() -> Div {
@@ -59,8 +61,10 @@ fn column(name: &'static str, traffic: Traffic, active: bool) -> Div {
         ("Bytes in", traffic.request_bytes.to_string()),
         ("Bytes out", traffic.reply_bytes.to_string()),
         ("≈Tokens", traffic.estimated_tokens().to_string()),
-        ("Mean latency", time),
+        ("Latency", time),
     ];
+    let mut value_font = TextStyle::default().font();
+    value_font.features = FontFeatures(vec![("tnum".into(), 1)].into());
     div()
         .flex_1()
         .min_w_0()
@@ -76,13 +80,19 @@ fn column(name: &'static str, traffic: Traffic, active: bool) -> Div {
                 .font_weight(FontWeight::SEMIBOLD)
                 .child(name),
         )
-        .children(rows.map(|(label, value)| {
+        .child(
             div()
-                .flex()
-                .justify_between()
-                .child(div().text_color(rgb(MUTED)).child(label))
-                .child(value)
-        }))
+                .grid()
+                .grid_cols(2)
+                .gap_x_2()
+                .gap_y_1()
+                .children(rows.into_iter().flat_map(|(label, value)| {
+                    [
+                        div().text_color(rgb(MUTED)).child(label),
+                        div().text_right().font(value_font.clone()).child(value),
+                    ]
+                })),
+        )
 }
 
 fn traffic(game: &ChessApp) -> Div {
@@ -123,15 +133,23 @@ fn traffic(game: &ChessApp) -> Div {
 }
 
 pub(super) fn panel(state: &Board, game: &ChessApp) -> Div {
-    let button = || {
+    let button = |enabled| {
         div()
             .flex_1()
-            .rounded_md()
+            .rounded(px(8.))
             .py_2()
             .text_center()
             .text_sm()
             .font_weight(FontWeight::SEMIBOLD)
+            .bg(rgb(BUTTON))
+            .text_color(rgb(TEXT))
+            .when_else(
+                enabled,
+                |b| b.cursor_pointer().hover(|s| s.bg(rgb(BUTTON_HOVER))),
+                |b| b.opacity(0.4),
+            )
     };
+    let can_undo = state.can_undo();
     div()
         .w(px(PANEL_WIDTH))
         .h(px(BOARD_SIZE))
@@ -167,22 +185,15 @@ pub(super) fn panel(state: &Board, game: &ChessApp) -> Div {
                 .flex()
                 .gap_2()
                 .child(
-                    button()
+                    button(true)
                         .id("new-game")
-                        .bg(rgb(LIGHT))
-                        .text_color(rgb(BACKGROUND))
-                        .cursor_pointer()
                         .on_click(game.board.on_click("reset", ()))
                         .child("New game"),
                 )
                 .child(
-                    button()
+                    button(can_undo)
                         .id("undo")
-                        .bg(rgb(CARD))
-                        .when(state.can_undo(), |b| {
-                            b.cursor_pointer().on_click(game.board.on_click("undo", ()))
-                        })
-                        .when(!state.can_undo(), |b| b.text_color(rgb(MUTED)))
+                        .when(can_undo, |b| b.on_click(game.board.on_click("undo", ())))
                         .child("Undo"),
                 ),
         )

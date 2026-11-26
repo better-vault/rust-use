@@ -5,6 +5,8 @@ Wikimedia Commons (`Chess_{k,q,r,b,n,p}{l,d}t45.svg`). They are multi-licensed b
 under GFDL, CC BY-SA 3.0, BSD and GPL; rust-use uses them under the
 [3-clause BSD licence](https://opensource.org/licenses/BSD-3-Clause).
 
+Colours adjusted to match the demo's palette.
+
 ```
 Copyright (c) Colin M.L. Burnett
 

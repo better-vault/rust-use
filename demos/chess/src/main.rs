@@ -26,6 +26,7 @@ fn main() -> gpui::Result<()> {
             ))),
             titlebar: Some(TitlebarOptions {
                 title: Some("rust-use chess".into()),
+                appears_transparent: true,
                 ..Default::default()
             }),
             ..Default::default()

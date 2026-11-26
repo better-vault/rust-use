@@ -3,12 +3,12 @@ use super::theme::{
     SELECTED, SQUARE, TARGET,
 };
 use chess_demo::Board;
+use chess_demo::board::{File, Rank, Square};
 use gpui::{
     AssetSource, Div, FontWeight, ImageSource, MouseButton, Resource, SharedString, div, img,
     prelude::*, px, rgb, rgba,
 };
 use rust_use::prelude::{ChangeSource, Handle};
-use shakmaty::{File, Rank, Square};
 use std::borrow::Cow;
 
 pub(crate) struct Pieces;
@@ -63,8 +63,8 @@ pub(super) fn board(state: &Board, handle: &Handle<Board>) -> Div {
         .shadow_md()
         .children(Rank::ALL.into_iter().rev().map(|rank| {
             div().flex().children(File::ALL.map(|file| {
-                let sq = Square::from_coords(file, rank);
-                let (base, ink) = if sq.is_light() {
+                let sq = Square::new(file, rank);
+                let (base, ink) = if (sq.file() as usize + sq.rank() as usize) % 2 == 1 {
                     (LIGHT, DARK)
                 } else {
                     (DARK, LIGHT)
@@ -103,12 +103,8 @@ pub(super) fn board(state: &Board, handle: &Handle<Board>) -> Div {
                     })
                     .when_some(piece, |d, p| {
                         d.child(
-                            embedded(format!(
-                                "pieces/{}{}.svg",
-                                p.color.char(),
-                                p.role.upper_char()
-                            ))
-                            .size(px(PIECE_SIZE)),
+                            embedded(format!("pieces/{}{}.svg", p.color_char(), p.role_char()))
+                                .size(px(PIECE_SIZE)),
                         )
                     })
                     .when(targets.contains(&sq), |d| {
@@ -120,10 +116,15 @@ pub(super) fn board(state: &Board, handle: &Handle<Board>) -> Div {
                         })
                     })
                     .when(file == File::A, |d| {
-                        d.child(label().top_0().left_1().child(rank.char().to_string()))
+                        d.child(label().top_0().left_1().child(char::from(rank).to_string()))
                     })
                     .when(rank == Rank::First, |d| {
-                        d.child(label().bottom_0().right_1().child(file.char().to_string()))
+                        d.child(
+                            label()
+                                .bottom_0()
+                                .right_1()
+                                .child(char::from(file).to_string()),
+                        )
                     })
             }))
         }))

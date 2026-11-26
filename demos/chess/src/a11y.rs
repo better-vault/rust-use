@@ -1,34 +1,23 @@
 //! Compact accessibility tree and element clicks for generic automation.
 //! Grid cells keep the same ids across moves and resets, starting with n6 at a8.
 use crate::Board;
+use crate::board::Square;
 use rust_use::prelude::*;
 use serde_json::json;
-use shakmaty::{Role, Square};
 
 const FIRST_CELL: u32 = 6;
-
-fn piece_name(role: Role) -> &'static str {
-    match role {
-        Role::Pawn => "pawn",
-        Role::Knight => "knight",
-        Role::Bishop => "bishop",
-        Role::Rook => "rook",
-        Role::Queen => "queen",
-        Role::King => "king",
-    }
-}
 
 fn tree(board: &Board) -> Value {
     let cells: Vec<_> = Square::ALL
         .into_iter()
         .map(|index| {
-            let square = index.flip_vertical();
-            let id = FIRST_CELL + index.to_u32();
-            let value = board.piece_at(square).map_or_else(String::new, |piece| {
-                format!("{} {}", piece.color, piece_name(piece.role))
-            });
-            let x = 64 * index.file().to_u32();
-            let y = 64 * index.rank().to_u32();
+            let square = index.flip_rank();
+            let id = FIRST_CELL + index as u32;
+            let value = board
+                .piece_at(square)
+                .map_or_else(String::new, crate::board::Piece::name);
+            let x = 64 * index.file() as u32;
+            let y = 64 * index.rank() as u32;
             json!({
                 "id": format!("n{id}"),
                 "role": "gridcell",
@@ -70,7 +59,7 @@ fn click(board: &Handle<Board>, id: &str) -> Result<(), String> {
                 .and_then(|s| s.parse::<u32>().ok())
                 .filter(|n| (FIRST_CELL..FIRST_CELL + 64).contains(n) && id == format!("n{n}"))
                 .ok_or_else(|| format!("no clickable element {id}"))?;
-            let square = Square::new(number - FIRST_CELL).flip_vertical();
+            let square = Square::index((number - FIRST_CELL) as usize).flip_rank();
             board
                 .update(ChangeSource::User, |b| b.click(square))
                 .map(|_| ())

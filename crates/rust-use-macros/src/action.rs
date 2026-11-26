@@ -35,16 +35,15 @@ fn options(attrs: &mut Vec<Attribute>) -> syn::Result<Options> {
 fn doc(method: &ImplItemFn) -> syn::Result<String> {
     let mut words = Vec::new();
     for attr in method.attrs.iter().filter(|a| a.path().is_ident("doc")) {
-        if let Meta::NameValue(meta) = &attr.meta {
-            if let Expr::Lit(expr) = &meta.value {
-                if let Lit::Str(lit) = &expr.lit {
-                    for line in lit.value().split('\n') {
-                        if line.trim().is_empty() && !words.is_empty() {
-                            return Ok(words.join(" "));
-                        }
-                        words.extend(line.split_whitespace().map(str::to_owned));
-                    }
+        if let Meta::NameValue(meta) = &attr.meta
+            && let Expr::Lit(expr) = &meta.value
+            && let Lit::Str(lit) = &expr.lit
+        {
+            for line in lit.value().split('\n') {
+                if line.trim().is_empty() && !words.is_empty() {
+                    return Ok(words.join(" "));
                 }
+                words.extend(line.split_whitespace().map(str::to_owned));
             }
         }
     }
@@ -70,22 +69,22 @@ fn option_inner(ty: &Type) -> Option<&Type> {
     if seg.ident != "Option" {
         return None;
     }
-    if let PathArguments::AngleBracketed(args) = &seg.arguments {
-        if let Some(GenericArgument::Type(inner)) = args.args.first() {
-            return Some(inner);
-        }
+    if let PathArguments::AngleBracketed(args) = &seg.arguments
+        && let Some(GenericArgument::Type(inner)) = args.args.first()
+    {
+        return Some(inner);
     }
     None
 }
 
 fn type_name(ty: &Type) -> syn::Result<&'static str> {
-    if let Type::Reference(r) = ty {
-        if segment(&r.elem).is_some_and(|s| s.ident == "str") {
-            return Err(Error::new_spanned(
-                ty,
-                "use String instead of &str for action parameters",
-            ));
-        }
+    if let Type::Reference(r) = ty
+        && segment(&r.elem).is_some_and(|s| s.ident == "str")
+    {
+        return Err(Error::new_spanned(
+            ty,
+            "use String instead of &str for action parameters",
+        ));
     }
     Ok(match segment(ty).map(|s| s.ident.to_string()).as_deref() {
         Some("bool") => "bool",

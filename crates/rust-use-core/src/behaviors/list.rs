@@ -104,16 +104,16 @@ impl<T: Serialize + Send + 'static> Behavior for List<T> {
     fn query(&self, q: &Query) -> Option<Page> {
         let needle = q.text.as_deref().map(str::to_lowercase);
         let items = self.iter().filter_map(|item| {
-            if let (Some(text), Some(filter)) = (&q.text, &self.filter) {
-                if !filter(item, text) {
-                    return None;
-                }
+            if let (Some(text), Some(filter)) = (&q.text, &self.filter)
+                && !filter(item, text)
+            {
+                return None;
             }
             let value = serde_json::to_value(item).unwrap_or(Value::Null);
-            if let (None, Some(needle)) = (&self.filter, &needle) {
-                if !value.to_string().to_lowercase().contains(needle) {
-                    return None;
-                }
+            if let (None, Some(needle)) = (&self.filter, &needle)
+                && !value.to_string().to_lowercase().contains(needle)
+            {
+                return None;
             }
             Some(value)
         });

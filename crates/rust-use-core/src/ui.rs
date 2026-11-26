@@ -48,10 +48,10 @@ impl From<ComponentId> for Ref {
 }
 impl From<String> for Ref {
     fn from(s: String) -> Self {
-        if s.starts_with('@') {
-            if let Ok(id) = s.parse() {
-                return Self::Id(id);
-            }
+        if s.starts_with('@')
+            && let Ok(id) = s.parse()
+        {
+            return Self::Id(id);
         }
         Self::Label(s)
     }

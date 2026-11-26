@@ -5,7 +5,7 @@ use chess_demo::{
     Board, ChessApp,
     metrics::{Traffic, Transport},
 };
-use gpui::{Div, FontFeatures, FontWeight, TextStyle, div, prelude::*, px, rgb};
+use gpui::{Div, FontFeatures, FontWeight, ScrollHandle, TextStyle, div, prelude::*, px, rgb};
 use rust_use::prelude::HandleExt;
 
 fn card() -> Div {
@@ -25,9 +25,16 @@ fn heading(label: &'static str) -> Div {
         .child(label)
 }
 
-fn moves(state: &Board) -> Div {
+/// The move list takes whatever height the fixed cards leave and scrolls inside it.
+fn moves(state: &Board, scroll: &ScrollHandle) -> Div {
     let history = state.history_san();
-    let mut list = div().id("move-list").flex_1().overflow_y_scroll().text_sm();
+    let mut list = div()
+        .id("move-list")
+        .flex_1()
+        .min_h_0()
+        .overflow_y_scroll()
+        .track_scroll(scroll)
+        .text_sm();
     for (index, pair) in history.chunks(2).enumerate() {
         list = list.child(
             div()
@@ -45,13 +52,16 @@ fn moves(state: &Board) -> Div {
     card()
         .flex_1()
         .min_h_0()
+        .overflow_hidden()
         .child(heading("Moves"))
         .child(list)
 }
 
 fn column(name: &'static str, traffic: Traffic, active: bool) -> Div {
     let latency = traffic.mean_latency();
-    let time = if latency.as_millis() == 0 {
+    let time = if traffic.calls == 0 {
+        "—".to_owned()
+    } else if latency.as_millis() == 0 {
         format!("{} µs", latency.as_micros())
     } else {
         format!("{:.1} ms", latency.as_secs_f64() * 1000.)
@@ -80,25 +90,23 @@ fn column(name: &'static str, traffic: Traffic, active: bool) -> Div {
                 .font_weight(FontWeight::SEMIBOLD)
                 .child(name),
         )
-        .child(
+        .children(rows.into_iter().map(|(label, value)| {
+            // Flex rows rather than a CSS grid: gpui 0.2.2 over-measures the height of a grid
+            // of text cells, which made this card swallow the move list.
             div()
-                .grid()
-                .grid_cols(2)
-                .gap_x_2()
-                .gap_y_1()
-                .children(rows.into_iter().flat_map(|(label, value)| {
-                    [
-                        div().text_color(rgb(MUTED)).child(label),
-                        div().text_right().font(value_font.clone()).child(value),
-                    ]
-                })),
-        )
+                .flex()
+                .justify_between()
+                .gap_2()
+                .child(div().text_color(rgb(MUTED)).child(label))
+                .child(div().font(value_font.clone()).child(value))
+        }))
 }
 
 fn traffic(game: &ChessApp) -> Div {
     let metrics = game.metrics.clone();
     let view = metrics.snapshot();
     card()
+        .flex_none()
         .child(
             div()
                 .flex()
@@ -132,7 +140,7 @@ fn traffic(game: &ChessApp) -> Div {
         )
 }
 
-pub(super) fn panel(state: &Board, game: &ChessApp) -> Div {
+pub(super) fn panel(state: &Board, game: &ChessApp, moves_scroll: &ScrollHandle) -> Div {
     let button = |enabled| {
         div()
             .flex_1()
@@ -159,6 +167,7 @@ pub(super) fn panel(state: &Board, game: &ChessApp) -> Div {
         .flex_col()
         .child(
             div()
+                .flex_none()
                 .mb_1()
                 .child(
                     div()
@@ -175,13 +184,15 @@ pub(super) fn panel(state: &Board, game: &ChessApp) -> Div {
         )
         .child(
             card()
+                .flex_none()
                 .child(heading("Status"))
                 .child(div().text_lg().child(state.status_text())),
         )
-        .child(moves(state))
+        .child(moves(state, moves_scroll))
         .child(traffic(game))
         .child(
             div()
+                .flex_none()
                 .flex()
                 .gap_2()
                 .child(

@@ -5,7 +5,8 @@ mod theme;
 pub(crate) use board::Pieces;
 use chess_demo::ChessApp;
 use gpui::{
-    App, Context, FocusHandle, KeyBinding, Task, Window, actions, div, prelude::*, px, rgb,
+    App, Context, FocusHandle, KeyBinding, ScrollHandle, Task, Window, actions, div, prelude::*,
+    px, rgb,
 };
 use rust_use::prelude::{ChangeSource, UiBinding, UiExt};
 
@@ -14,6 +15,10 @@ actions!(chess, [Undo, NewGame]);
 pub(crate) struct ChessWindow {
     game: ChessApp,
     focus: FocusHandle,
+    /// Scroll position of the move list, kept so new moves can scroll it to the bottom.
+    moves: ScrollHandle,
+    /// Number of plies shown last frame; the list follows the game when it grows.
+    plies: usize,
     _binding: UiBinding,
     _traffic: Task<()>,
 }
@@ -40,6 +45,8 @@ impl ChessWindow {
         Self {
             game,
             focus,
+            moves: ScrollHandle::new(),
+            plies: 0,
             _binding: binding,
             _traffic: traffic,
         }
@@ -52,6 +59,11 @@ impl ChessWindow {
 }
 impl Render for ChessWindow {
     fn render(&mut self, _: &mut Window, cx: &mut Context<'_, Self>) -> impl IntoElement {
+        let plies = self.game.board.read(|b| b.history_san().len()).unwrap_or(0);
+        if plies > self.plies {
+            self.moves.scroll_to_bottom();
+        }
+        self.plies = plies;
         div()
             .track_focus(&self.focus)
             .on_action(cx.listener(|this, _: &Undo, _, _| {
@@ -73,7 +85,7 @@ impl Render for ChessWindow {
                     .read(|state| {
                         [
                             board::board(state, &self.game.board),
-                            panel::panel(state, &self.game),
+                            panel::panel(state, &self.game, &self.moves),
                         ]
                     })
                     .into_iter()

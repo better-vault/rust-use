@@ -1,0 +1,22 @@
+[package]
+name = "chess-mcp-baseline"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+clap.workspace = true
+rmcp = { version = "3.12", default-features = false, features = ["macros", "server", "transport-io"] }
+rust-use-agent = { workspace = true, features = ["ipc"] }
+schemars = "1"
+serde.workspace = true
+thiserror.workspace = true
+tokio = { version = "1", features = ["macros", "rt"] }
+
+[dev-dependencies]
+rmcp = { version = "3.12", default-features = false, features = ["client"] }
+serde_json.workspace = true
+
+[lints]
+workspace = true

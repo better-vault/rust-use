@@ -38,11 +38,12 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      # The facade's default features leave GPUI disabled.
-      - run: cargo clippy --workspace --exclude rust-use-gpui --all-targets -- -D warnings
-      - run: cargo test --workspace --exclude rust-use-gpui
+      # GPUI needs system packages on Linux, so leave out the adapter and the demo and bench crates
+      # that depend on it; the macOS job builds everything.
+      - run: cargo clippy --workspace --exclude rust-use-gpui --exclude chess-demo --exclude rust-use-bench --all-targets -- -D warnings
+      - run: cargo test --workspace --exclude rust-use-gpui --exclude chess-demo --exclude rust-use-bench
       - run: cargo test -p rust-use --no-default-features
-      - run: cargo doc --workspace --exclude rust-use-gpui --no-deps
+      - run: cargo doc --workspace --exclude rust-use-gpui --exclude chess-demo --exclude rust-use-bench --no-deps
         env:
           RUSTDOCFLAGS: -Dwarnings
 
@@ -75,7 +76,7 @@ jobs:
         with:
           toolchain: ${{ steps.msrv.outputs.version }}
       - uses: Swatinem/rust-cache@v2
-      - run: cargo +${{ steps.msrv.outputs.version }} check --workspace --exclude rust-use-gpui
+      - run: cargo +${{ steps.msrv.outputs.version }} check --workspace --exclude rust-use-gpui --exclude chess-demo --exclude rust-use-bench
 
   deny:
     runs-on: ubuntu-latest

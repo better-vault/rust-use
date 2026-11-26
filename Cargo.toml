@@ -8,7 +8,6 @@ edition = "2024"
 rust-version = "1.85"
 license = "MIT"
 repository = "https://github.com/better-vault/rust-use"
-homepage = "https://github.com/better-vault/rust-use"
 authors = ["Khalid Abdi"]
 keywords = ["ui", "agents", "gpui", "mcp", "automation"]
 categories = ["gui", "development-tools"]
@@ -26,8 +25,8 @@ quote = "1"
 proc-macro2 = "1"
 proc-macro-crate = "3"
 trybuild = "1"
+insta = "1"
 heck = "0.5"
-tokio = "1"
 clap = { version = "4", features = ["derive"] }
 gpui = "0.2.2"
 
@@ -44,6 +43,8 @@ module_name_repetitions = "allow"
 must_use_candidate = "allow"
 unwrap_used = "warn"
 expect_used = "warn"
+# Its suggested rewrite (`assert_eq!(v, [] as [T; 0])`) reads worse than `assert!(v.is_empty())`.
+assert_is_empty = "allow"
 
 [profile.release]
 lto = "thin"

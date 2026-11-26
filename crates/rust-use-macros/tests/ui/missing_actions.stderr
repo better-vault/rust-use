@@ -4,7 +4,7 @@ error[E0277]: add an `#[actions] impl` block or `#[primitive(no_actions)]`
 3 | #[derive(Primitive)]
   |          ^^^^^^^^^ unsatisfied trait bound
   |
-help: the trait `OwnActions` is not implemented for `Invalid`
+help: the trait `rust_use_core::__private::OwnActions` is not implemented for `Invalid`
  --> tests/ui/missing_actions.rs:4:1
   |
 4 | struct Invalid;

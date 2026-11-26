@@ -49,7 +49,8 @@ rev 9
 ```
 
 The bridge remembers the last revision each agent session saw. `diff` with no argument means
-"since my last snapshot, diff or act".
+"since my last snapshot, diff or act". `diff <n>` starts from revision `n` and advances the
+session cursor to the returned revision. The CLI saves this revision in `<app>.rev` across invocations.
 
 ## Act
 

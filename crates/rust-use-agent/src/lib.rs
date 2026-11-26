@@ -13,3 +13,5 @@ pub use types::{
 
 #[cfg(feature = "ipc")]
 pub mod ipc;
+#[cfg(feature = "mcp")]
+pub mod mcp;

@@ -11,12 +11,16 @@ categories.workspace = true
 description = "The agent bridge for rust-use: compact snapshots, batched actions, queries and permissions."
 
 [features]
+mcp = ["dep:rmcp", "dep:tokio", "dep:schemars"]
 ipc = ["dep:interprocess", "dep:rustix"]
 
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1", features = ["fs", "process"], optional = true }
 
 [dependencies]
+rmcp = { version = "3.12", default-features = false, features = ["macros", "server", "transport-io"], optional = true }
+tokio = { version = "1", features = ["rt"], optional = true }
+schemars = { version = "1", optional = true }
 interprocess = { version = "2", optional = true }
 rust-use-core.workspace = true
 serde.workspace = true
@@ -24,6 +28,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+rmcp = { version = "3.12", default-features = false, features = ["client"] }
 insta.workspace = true
 
 [lints]

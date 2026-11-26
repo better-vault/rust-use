@@ -10,7 +10,7 @@
 //! - `agent` enables the agent bridge and is enabled by default.
 //! - `gpui` enables the GPUI adapter and the agent bridge.
 //! - `ipc` serves the bridge over local sockets.
-//! - `mcp` enables the agent bridge.
+//! - `mcp` serves the agent bridge over MCP stdio.
 
 #![cfg_attr(
     feature = "macros",
@@ -61,6 +61,8 @@ pub use rust_use_core::{
 pub use rust_use_agent as agent;
 #[cfg(feature = "ipc")]
 pub use rust_use_agent::ipc;
+#[cfg(feature = "mcp")]
+pub use rust_use_agent::mcp;
 #[cfg(feature = "agent")]
 pub use rust_use_agent::{
     ActError, ActOutcome, Agent, Diff, QueryOutcome, Script, Snapshot, SnapshotOptions, Step,
@@ -103,6 +105,8 @@ pub mod prelude {
     pub use crate::ipc::{
         Client, Endpoint, IpcError, RequestLog, Server, ServerGuard, list_endpoints,
     };
+    #[cfg(feature = "mcp")]
+    pub use crate::mcp::{Endpoint as McpEndpoint, McpError, McpServer};
     pub use crate::{
         ActionError, ActionSpec, Args, Behavior, ChangeSource, ComponentId, Decision, Describe,
         DragDrop, Field, Handle, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive,

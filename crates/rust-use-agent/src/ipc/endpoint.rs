@@ -58,6 +58,15 @@ impl Endpoint {
         &self.name
     }
 
+    /// Local file for clients persisting this app's revision cursor.
+    pub fn revision_path(&self) -> std::path::PathBuf {
+        #[cfg(unix)]
+        let dir = directory();
+        #[cfg(windows)]
+        let dir = env::temp_dir().join("rust-use");
+        dir.join(format!("{}.rev", self.name))
+    }
+
     #[cfg(unix)]
     fn path(&self) -> std::path::PathBuf {
         directory().join(format!("{}.sock", self.name))

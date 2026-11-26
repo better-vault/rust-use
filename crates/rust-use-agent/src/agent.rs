@@ -204,7 +204,10 @@ impl Agent {
                 .to_string(),
             "snapshot" => "err expected snapshot [--verbose]".into(),
             "diff" if rest.is_empty() => self.diff().to_string(),
-            "diff" => "err expected diff".into(),
+            "diff" => rest.parse::<u64>().map_or_else(
+                |_| "err expected diff [revision]".into(),
+                |rev| self.finish_diff(rev).to_string(),
+            ),
             "act" => self
                 .act(rest)
                 .map_or_else(|e| e.to_reply(), |out| out.to_string()),

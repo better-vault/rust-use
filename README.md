@@ -55,7 +55,7 @@ has no UI dependency at all.
 
 ## Getting started
 
-Needs Rust 1.85+.
+Needs Rust 1.88+.
 
 ```sh
 cargo add rust-use

@@ -17,7 +17,7 @@ By participating you agree to abide by the [Code of Conduct](CODE_OF_CONDUCT.md)
 
 ## Getting set up
 
-Requires **Rust 1.85+**. The GPUI adapter and the chess demo
+Requires **Rust 1.88+**. The GPUI adapter and the chess demo
 build on macOS out of the box; on Linux, GPUI needs the system packages listed in
 [Zed's Linux guide](https://zed.dev/docs/development/linux).
 

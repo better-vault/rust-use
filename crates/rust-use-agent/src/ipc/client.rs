@@ -3,6 +3,7 @@ use interprocess::local_socket::{Stream, prelude::*};
 
 /// Persistent synchronous connection with its own agent revision cursor.
 pub struct Client {
+    endpoint: Endpoint,
     stream: Stream,
 }
 
@@ -13,6 +14,7 @@ impl Client {
     /// Returns the socket connection error if the app is unreachable.
     pub fn connect(endpoint: &Endpoint) -> Result<Self, IpcError> {
         Ok(Self {
+            endpoint: endpoint.clone(),
             stream: Stream::connect(endpoint.address()?)?,
         })
     }
@@ -29,6 +31,11 @@ impl Client {
             )),
         }
     }
+    /// The app selected at connection time.
+    pub fn endpoint(&self) -> &Endpoint {
+        &self.endpoint
+    }
+
     /// Send one command and read its complete text reply.
     ///
     /// # Errors

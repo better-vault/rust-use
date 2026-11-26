@@ -1,12 +1,17 @@
-//! Command-line client for driving a `rust-use` app from an agent.
+//! Command-line client for driving a rust-use app.
+mod cli;
+mod commands;
+mod state;
 
 use clap::Parser;
+use std::process::ExitCode;
 
-/// Drive a rust-use app from an agent.
-#[derive(Parser)]
-#[command(name = "rust-use", version, arg_required_else_help = true)]
-struct Cli {}
-
-fn main() {
-    Cli::parse();
+fn main() -> ExitCode {
+    match commands::run(cli::Cli::parse()) {
+        Ok(code) => code,
+        Err(error) => {
+            eprintln!("{error}");
+            ExitCode::from(2)
+        }
+    }
 }

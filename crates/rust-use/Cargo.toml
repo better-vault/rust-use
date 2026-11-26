@@ -30,7 +30,7 @@ macros = ["dep:rust-use-macros"]
 agent = ["dep:rust-use-agent"]
 gpui = ["agent", "dep:rust-use-gpui"]
 ipc = ["agent", "rust-use-agent/ipc"]
-mcp = ["agent"]
+mcp = ["agent", "rust-use-agent/mcp"]
 
 [lints]
 workspace = true

@@ -81,6 +81,10 @@ impl Server {
     /// Returns an error if binding or starting the thread fails.
     pub fn spawn(self) -> Result<ServerGuard, IpcError> {
         let listener = self.endpoint.bind()?;
+        match std::fs::remove_file(self.endpoint.revision_path()) {
+            Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e.into()),
+            _ => (),
+        }
         let mut policy = Agent::new(&self.ui);
         let predicates = self.predicates;
         if !predicates.is_empty() {

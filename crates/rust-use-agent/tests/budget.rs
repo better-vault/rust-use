@@ -153,7 +153,10 @@ fn format_examples() {
     total 2
     ");
     assert_snapshot!(agent.handle("query \"Country\" sw from=50"),@"total 2");
+    assert_eq!(agent.handle("diff 7"), agent.diff_since(7).to_string());
     assert_eq!(agent.handle("diff"), "rev 8");
+    assert_eq!(agent.handle("diff 8"), "rev 8");
+    assert!(agent.handle("diff invalid").starts_with("err"));
 }
 
 #[test]
@@ -246,4 +249,55 @@ fn invalid_scripts_do_not_start_dispatch() {
         agent.handle("help"),
         "err unknown command `help` (try: snapshot, diff, act, query)"
     );
+}
+
+#[cfg(feature = "mcp")]
+#[tokio::test]
+async fn mcp_tools_return_compact_replies() -> Result<(), Box<dyn std::error::Error>> {
+    use rmcp::{ServiceExt, model::CallToolRequestParams};
+    use rust_use_agent::mcp::McpServer;
+    use serde_json::json;
+
+    let ui = screen();
+    let expected = screen().agent();
+    let (a, b) = tokio::io::duplex(8192);
+    let (server, client) = tokio::join!(McpServer::new(ui.agent()).serve(a), ().serve(b));
+    let server = server?;
+    let client = client?;
+    let tools = client.list_all_tools().await?;
+    let mut names: Vec<_> = tools.iter().map(|t| t.name.as_ref()).collect();
+    names.sort_unstable();
+    assert_eq!(names, ["act", "query", "snapshot"]);
+    assert!(
+        tools
+            .iter()
+            .map(|t| t.description.as_deref().unwrap_or_default().len())
+            .sum::<usize>()
+            <= 600
+    );
+
+    for (tool, args, request) in [
+        ("snapshot", json!({}), "snapshot"),
+        ("act", json!({"script":"Mute toggle"}), "act Mute toggle"),
+        ("snapshot", json!({"verbose":true}), "snapshot --verbose"),
+        (
+            "query",
+            json!({"ref":"Country","text":"sw","from":1}),
+            "query Country sw from=1",
+        ),
+        ("act", json!({"script":"Mute missing"}), "act Mute missing"),
+    ] {
+        let reply = client
+            .call_tool(
+                CallToolRequestParams::new(tool).with_arguments(serde_json::from_value(args)?),
+            )
+            .await?;
+        let text = expected.handle(request);
+        assert_eq!(reply.is_error.unwrap_or(false), text.starts_with("err"));
+        assert_eq!(reply.content.len(), 1);
+        assert_eq!(reply.content[0].as_text().map(|c| &c.text), Some(&text));
+    }
+    client.cancel().await?;
+    server.waiting().await?;
+    Ok(())
 }

@@ -1,0 +1,5 @@
+error: use String instead of &str for action parameters
+ --> tests/ui/str_param.rs:8:32
+  |
+8 |     fn rename(&mut self, name: &str) {}
+  |                                ^^^^

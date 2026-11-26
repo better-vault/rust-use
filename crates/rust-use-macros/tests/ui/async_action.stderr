@@ -1,0 +1,5 @@
+error: async actions are not supported
+ --> tests/ui/async_action.rs:8:5
+  |
+8 |     async fn toggle(&mut self) {}
+  |     ^^^^^

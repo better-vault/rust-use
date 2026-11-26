@@ -1,0 +1,5 @@
+error: generic actions are not supported
+ --> tests/ui/generic_action.rs:8:11
+  |
+8 |     fn set<T>(&mut self, value: T) {}
+  |           ^^^

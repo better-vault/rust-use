@@ -4487,6 +4487,7 @@ dependencies = [
  "rust-use-core",
  "rust-use-gpui",
  "rust-use-macros",
+ "serde_json",
 ]
 
 [[package]]
@@ -4507,6 +4508,7 @@ dependencies = [
 name = "rust-use-core"
 version = "0.1.0"
 dependencies = [
+ "rust-use-macros",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
@@ -4524,6 +4526,15 @@ dependencies = [
 [[package]]
 name = "rust-use-macros"
 version = "0.1.0"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "rust-use-core",
+ "syn 2.0.119",
+ "trybuild",
+]
 
 [[package]]
 name = "rustc-hash"
@@ -5423,6 +5434,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1bbb9f3c5c463a01705937a24fdabc5047929ac764b2d5b9cf681c1f5041ed5"
 
 [[package]]
+name = "target-tuple"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "876fef147edbcbddc8ac5cbbba92c7b86519e314e86638596c09673b2ed01e7f"
+
+[[package]]
 name = "tempfile"
 version = "3.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5765,6 +5782,21 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
+
+[[package]]
+name = "trybuild"
+version = "1.0.125"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9838b494ee14d28f1eeea490e8f4f10248fa6dd371d4bc874b635de499408245"
+dependencies = [
+ "glob",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "target-tuple",
+ "termcolor",
+ "toml 1.2.3+spec-1.1.0",
+]
 
 [[package]]
 name = "ttf-parser"

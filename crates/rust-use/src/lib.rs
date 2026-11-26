@@ -24,10 +24,38 @@ pub use rust_use_agent as agent;
 #[cfg(feature = "gpui")]
 pub use rust_use_gpui as gpui;
 
+#[doc(hidden)]
+pub mod __private {
+    pub use rust_use_core as core;
+    pub use serde_json;
+}
+
+/// Define an agent-visible primitive and its actions.
+///
+/// ```
+/// use rust_use::prelude::*;
+/// #[derive(Primitive, Default)]
+/// struct Button { #[agent(value)] pressed: bool }
+/// #[actions]
+/// impl Button {
+///     /// Press the button.
+///     fn press(&mut self) { self.pressed = true; }
+/// }
+/// let ui = Ui::new();
+/// let button = ui.mount(Button::default());
+/// ui.invoke(button.id(), "press", (), ChangeSource::Agent)?;
+/// assert_eq!(button.read(|b| b.pressed), Some(true));
+/// # Ok::<(), rust_use::InvokeError>(())
+/// ```
+#[cfg(feature = "macros")]
+pub use rust_use_macros::{Primitive, actions};
+
 pub mod prelude {
     //! Common imports for applications using `rust-use`.
+    #[cfg(feature = "macros")]
+    pub use crate::actions;
     pub use crate::{
-        ActionSpec, Args, Behavior, ChangeSource, ComponentId, Decision, Describe, Handle, Page,
-        ParamSpec, Primitive, Query, Ref, Ui, Value,
+        ActionError, ActionSpec, Args, Behavior, ChangeSource, ComponentId, Decision, Describe,
+        Handle, Page, ParamSpec, Primitive, Query, Ref, Ui, Value,
     };
 }

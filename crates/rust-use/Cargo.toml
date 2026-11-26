@@ -19,6 +19,7 @@ name = "rust_use"
 all-features = true
 
 [dependencies]
+serde_json.workspace = true
 rust-use-core.workspace = true
 rust-use-macros = { workspace = true, optional = true }
 rust-use-agent = { workspace = true, optional = true }

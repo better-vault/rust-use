@@ -18,3 +18,19 @@ pub use ui::{
     ChangeEvent, ChangeKind, ChangeSet, ComponentId, ComponentInfo, Handle, Ref, Subscription, Ui,
 };
 pub use value::{Args, Value};
+
+#[doc(hidden)]
+pub mod __private {
+    use crate::{ActionError, ActionSpec, Args, Value};
+    pub use serde_json;
+
+    #[doc(hidden)]
+    #[diagnostic::on_unimplemented(
+        message = "add an `#[actions] impl` block or `#[primitive(no_actions)]`"
+    )]
+    pub trait OwnActions {
+        const ACTIONS: &'static [ActionSpec];
+        fn own_is_enabled(&self, action: &str) -> Option<bool>;
+        fn own_invoke(&mut self, action: &str, args: &Args) -> Option<Result<Value, ActionError>>;
+    }
+}

@@ -1,0 +1,5 @@
+error: unknown agent field option
+ --> tests/ui/unknown_field_key.rs:4:26
+  |
+4 | struct Invalid { #[agent(hidden)] field: bool }
+  |                          ^^^^^^

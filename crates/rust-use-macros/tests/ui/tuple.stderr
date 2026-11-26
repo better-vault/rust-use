@@ -1,0 +1,5 @@
+error: tuple structs cannot derive Primitive
+ --> tests/ui/tuple.rs:4:15
+  |
+4 | struct Invalid(u8);
+  |               ^^^^

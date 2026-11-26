@@ -1,0 +1,12 @@
+error[E0277]: add an `#[actions] impl` block or `#[primitive(no_actions)]`
+ --> tests/ui/missing_actions.rs:3:10
+  |
+3 | #[derive(Primitive)]
+  |          ^^^^^^^^^ unsatisfied trait bound
+  |
+help: the trait `OwnActions` is not implemented for `Invalid`
+ --> tests/ui/missing_actions.rs:4:1
+  |
+4 | struct Invalid;
+  | ^^^^^^^^^^^^^^
+  = note: this error originates in the derive macro `Primitive` (in Nightly builds, run with -Z macro-backtrace for more info)

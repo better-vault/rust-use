@@ -1,0 +1,5 @@
+error: only one field may have #[agent(value)]
+ --> tests/ui/two_values.rs:6:21
+  |
+6 |     #[agent(value)] second: u8,
+  |                     ^^^^^^

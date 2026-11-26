@@ -1,0 +1,5 @@
+error: Primitive can only be derived for structs
+ --> tests/ui/enum_input.rs:4:6
+  |
+4 | enum Invalid { A }
+  |      ^^^^^^^

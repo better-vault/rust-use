@@ -61,3 +61,9 @@ pub enum InvokeError {
     #[error(transparent)]
     Action(#[from] ActionError),
 }
+
+impl From<String> for ActionError {
+    fn from(reason: String) -> Self {
+        Self::Rejected(reason)
+    }
+}

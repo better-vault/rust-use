@@ -1,0 +1,5 @@
+error: document this action: its doc comment is what the agent reads
+ --> tests/ui/missing_doc.rs:7:8
+  |
+7 |     fn toggle(&mut self) {}
+  |        ^^^^^^

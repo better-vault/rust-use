@@ -1,0 +1,36 @@
+[package]
+name = "rust-use"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "A library of behaviors for agents to build and drive the next generation of user interfaces."
+readme = "../../README.md"
+
+[lib]
+name = "rust_use"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+rust-use-core.workspace = true
+rust-use-macros = { workspace = true, optional = true }
+rust-use-agent = { workspace = true, optional = true }
+rust-use-gpui = { workspace = true, optional = true }
+
+[features]
+default = ["macros", "agent"]
+macros = ["dep:rust-use-macros"]
+agent = ["dep:rust-use-agent"]
+gpui = ["agent", "dep:rust-use-gpui"]
+ipc = ["agent"]
+mcp = ["agent"]
+
+[lints]
+workspace = true

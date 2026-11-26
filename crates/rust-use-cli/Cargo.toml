@@ -1,0 +1,24 @@
+[package]
+name = "rust-use-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Command-line client for driving a rust-use app from an agent."
+
+[[bin]]
+name = "rust-use"
+path = "src/main.rs"
+# The binary and the facade resolve to the same rustdoc output path.
+doc = false
+
+[dependencies]
+clap.workspace = true
+
+[lints]
+workspace = true

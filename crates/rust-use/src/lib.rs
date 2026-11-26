@@ -58,6 +58,11 @@ pub use rust_use_core::{
 
 #[cfg(feature = "agent")]
 pub use rust_use_agent as agent;
+#[cfg(feature = "agent")]
+pub use rust_use_agent::{
+    ActError, ActOutcome, Agent, Diff, QueryOutcome, Script, Snapshot, SnapshotOptions, Step,
+    UiAgentExt, step,
+};
 #[cfg(feature = "gpui")]
 pub use rust_use_gpui as gpui;
 
@@ -96,4 +101,6 @@ pub mod prelude {
         DragDrop, Field, Handle, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive,
         Query, Ref, RovingFocus, Selection, SelectionMode, Toggle, Typeahead, Ui, Value,
     };
+    #[cfg(feature = "agent")]
+    pub use crate::{UiAgentExt, step};
 }

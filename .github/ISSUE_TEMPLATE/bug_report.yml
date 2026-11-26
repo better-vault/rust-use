@@ -1,0 +1,117 @@
+name: Bug report
+description: Something in rust-use does not behave the way it is documented.
+title: '[bug]: '
+labels: ['bug', 'needs triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug.
+
+        Before you file: please search the [existing issues](https://github.com/better-vault/rust-use/issues?q=is%3Aissue)
+        first, and check that you are on the latest version of
+        [rust-use](https://crates.io/crates/rust-use).
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of rust-use is this about?
+      options:
+        - Behaviors or primitives (rust-use-core)
+        - The derive and attribute macros (rust-use-macros)
+        - The agent bridge — snapshot, act, query (rust-use-agent)
+        - The GPUI adapter (rust-use-gpui)
+        - The CLI, IPC or the MCP shim (rust-use-cli)
+        - The chess demo or the benchmark
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what happened instead?
+      placeholder: |
+        I expected `agent.act` to reject a step whose ref is off the page.
+        Instead it returned `Ok` and the value did not change.
+    validations:
+      required: true
+
+  - type: input
+    id: behavior
+    attributes:
+      label: Behavior or primitive
+      description: Which one, if it is one in particular?
+      placeholder: roving_focus
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: |
+        The smallest piece of code that shows the problem. A link to a repository is even
+        better — most bugs that cannot be reproduced cannot be fixed.
+      render: rust
+      placeholder: |
+        let ui = Ui::new();
+        ui.mount(MuteButton::default()).label("Mute");
+        ui.agent().act([step("Mute", "toggle", ())])?;
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: rust-use version
+      description: From your `Cargo.lock`.
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: The output of `rustc -V` and `cargo -V`, the features you enabled, and the gpui version if you use it.
+      render: text
+      placeholder: |
+        rustc 1.91.1
+        cargo 1.91.1
+        rust-use features: default, gpui
+        gpui 0.2.2
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Any error message or panic in full, and a screenshot or recording if it is visual.
+      placeholder: Paste the whole error with `RUST_BACKTRACE=1`, not just its first line — the backtrace is usually the useful part.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: I am on the latest version of rust-use.
+          required: true

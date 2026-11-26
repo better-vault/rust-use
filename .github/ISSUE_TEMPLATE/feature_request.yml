@@ -1,0 +1,96 @@
+name: Feature request
+description: Propose a new behavior, an agent capability, or a change to an existing API.
+title: '[feat]: '
+labels: ['enhancement', 'needs triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the proposal.
+
+        rust-use aims at one small, coherent vocabulary that an agent can learn once and use on
+        any screen, so it is worth having the design conversation here before any code gets
+        written.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of change is this?
+      options:
+        - A new behavior
+        - A new action or option on an existing behavior
+        - A change to the agent bridge (snapshot, act, query, permissions)
+        - A new adapter or transport
+        - Documentation, the CLI or the benchmark
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: |
+        What are you trying to build, and where does rust-use get in the way today? Describe the
+        situation rather than the solution — the best API is often not the one either of us
+        thought of first.
+      placeholder: |
+        My agent needs to reorder rows in a list. `list` lets it select a row, but there is no
+        action to move one, so it falls back to dragging coordinates through the UI.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+      description: An API sketch, if you have one. Rough is fine.
+      render: rust
+      placeholder: |
+        #[actions]
+        impl TaskList {
+            /// Move a row to a new index.
+            fn reorder(&mut self, from: usize, to: usize) { … }
+        }
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you are doing instead today
+      description: The workaround, and what is wrong with it.
+    validations:
+      required: false
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: |
+        Links to the same idea solved elsewhere, a screenshot, or a design you are working from.
+        Useful even when the implementation would be nothing alike.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and discussions and this is not a duplicate.
+          required: true
+        - label: I checked the [documentation](https://docs.rs/rust-use) and no existing behavior covers this.
+          required: true
+
+  - type: dropdown
+    id: contributing
+    attributes:
+      label: Would you be willing to work on this?
+      description: Entirely optional, and not a condition of the proposal being accepted.
+      options:
+        - 'Yes, if the approach is agreed first'
+        - 'I could help test it'
+        - 'No'
+    validations:
+      required: false

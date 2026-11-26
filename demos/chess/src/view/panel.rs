@@ -25,6 +25,20 @@ fn heading(label: &'static str) -> Div {
         .child(label)
 }
 
+/// Run time since the counters were reset, frozen at the last request once the game is over.
+fn elapsed(game: &ChessApp, finished: bool) -> Option<Div> {
+    let elapsed = game.metrics.snapshot().elapsed(finished)?;
+    let mut font = TextStyle::default().font();
+    font.features = FontFeatures(vec![("tnum".into(), 1)].into());
+    Some(
+        div()
+            .text_lg()
+            .font_weight(FontWeight::SEMIBOLD)
+            .font(font)
+            .child(format!("{:.1} s", elapsed.as_secs_f64())),
+    )
+}
+
 /// The move list takes whatever height the fixed cards leave and scrolls inside it.
 fn moves(state: &Board, scroll: &ScrollHandle) -> Div {
     let history = state.history_san();
@@ -140,7 +154,12 @@ fn traffic(game: &ChessApp) -> Div {
         )
 }
 
-pub(super) fn panel(state: &Board, game: &ChessApp, moves_scroll: &ScrollHandle) -> Div {
+pub(super) fn panel(
+    state: &Board,
+    game: &ChessApp,
+    moves_scroll: &ScrollHandle,
+    banner: Option<&str>,
+) -> Div {
     let button = |enabled| {
         div()
             .flex_1()
@@ -175,18 +194,27 @@ pub(super) fn panel(state: &Board, game: &ChessApp, moves_scroll: &ScrollHandle)
                         .font_weight(FontWeight::BOLD)
                         .child("rust-use chess"),
                 )
-                .child(
-                    div()
+                .child(match banner {
+                    Some(banner) => div()
+                        .text_sm()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(rgb(DARK))
+                        .child(banner.to_owned()),
+                    None => div()
                         .text_xs()
                         .text_color(rgb(MUTED))
                         .child("Agents play through behaviors, not pixels"),
-                ),
+                }),
         )
         .child(
-            card()
-                .flex_none()
-                .child(heading("Status"))
-                .child(div().text_lg().child(state.status_text())),
+            card().flex_none().child(heading("Status")).child(
+                div()
+                    .flex()
+                    .justify_between()
+                    .items_baseline()
+                    .child(div().text_lg().child(state.status_text()))
+                    .children(elapsed(game, !state.can_play())),
+            ),
         )
         .child(moves(state, moves_scroll))
         .child(traffic(game))

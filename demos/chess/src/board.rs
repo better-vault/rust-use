@@ -135,6 +135,11 @@ impl Board {
         self.status.is_none()
     }
 
+    /// Whether the game is still in progress.
+    pub fn can_play(&self) -> bool {
+        self.playing()
+    }
+
     /// Whether there is a move to take back.
     pub fn can_undo(&self) -> bool {
         !self.history.is_empty()

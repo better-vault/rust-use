@@ -3,7 +3,7 @@ use rust_use::prelude::RequestLog;
 use serde::Serialize;
 use std::{
     sync::{Arc, Mutex, MutexGuard},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 /// Automation interface used by a request.
@@ -60,6 +60,26 @@ pub struct MetricsView {
     pub baseline: Traffic,
     /// Transport that last completed a request.
     pub last: Option<Transport>,
+    /// When the counters were last reset: the start of a timed run.
+    #[serde(skip)]
+    pub started: Option<Instant>,
+    /// When the latest request was answered.
+    #[serde(skip)]
+    pub last_request: Option<Instant>,
+}
+
+impl MetricsView {
+    /// Time since the last reset, or, once `finished`, from the reset to the last request.
+    /// `None` until the counters have been reset once.
+    pub fn elapsed(&self, finished: bool) -> Option<Duration> {
+        let started = self.started?;
+        let end = if finished {
+            self.last_request.filter(|t| *t > started)?
+        } else {
+            Instant::now()
+        };
+        Some(end.duration_since(started))
+    }
 }
 
 /// Thread-safe collector shared between the server and the GUI.
@@ -100,6 +120,7 @@ impl Metrics {
             Transport::Native
         };
         view.last = Some(kind);
+        view.last_request = Some(Instant::now());
         let traffic = match kind {
             Transport::Native => &mut view.native,
             Transport::Baseline => &mut view.baseline,
@@ -115,9 +136,12 @@ impl Metrics {
     pub fn snapshot(&self) -> MetricsView {
         *self.lock()
     }
-    /// Clear both sets of measurements atomically.
+    /// Clear both sets of measurements atomically and start the run timer.
     pub fn reset(&self) {
-        *self.lock() = MetricsView::default();
+        *self.lock() = MetricsView {
+            started: Some(Instant::now()),
+            ..MetricsView::default()
+        };
         let _ = self.changed.try_send(());
     }
 }

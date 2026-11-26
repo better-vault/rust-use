@@ -9,6 +9,7 @@ use gpui::{
     px, rgb,
 };
 use rust_use::prelude::{ChangeSource, UiBinding, UiExt};
+use std::time::Duration;
 
 actions!(chess, [Undo, NewGame]);
 
@@ -19,8 +20,11 @@ pub(crate) struct ChessWindow {
     moves: ScrollHandle,
     /// Number of plies shown last frame; the list follows the game when it grows.
     plies: usize,
+    /// Optional label for recordings, from `RUST_USE_CHESS_BANNER`.
+    banner: Option<String>,
     _binding: UiBinding,
     _traffic: Task<()>,
+    _clock: Task<()>,
 }
 impl ChessWindow {
     pub(crate) fn bind_keys(cx: &mut App) {
@@ -42,11 +46,33 @@ impl ChessWindow {
                 }
             }
         });
+        // Keep the run timer moving while a timed run is in progress.
+        let clock = cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(100))
+                    .await;
+                let running = this.update(cx, |this, cx| {
+                    let finished = this.game.board.read(|b| !b.can_play()).unwrap_or(true);
+                    let timing = this.game.metrics.snapshot().started.is_some();
+                    if timing && !finished {
+                        cx.notify();
+                    }
+                });
+                if running.is_err() {
+                    break;
+                }
+            }
+        });
         Self {
             game,
             focus,
             moves: ScrollHandle::new(),
             plies: 0,
+            banner: std::env::var("RUST_USE_CHESS_BANNER")
+                .ok()
+                .filter(|b| !b.is_empty()),
+            _clock: clock,
             _binding: binding,
             _traffic: traffic,
         }
@@ -85,7 +111,7 @@ impl Render for ChessWindow {
                     .read(|state| {
                         [
                             board::board(state, &self.game.board),
-                            panel::panel(state, &self.game, &self.moves),
+                            panel::panel(state, &self.game, &self.moves, self.banner.as_deref()),
                         ]
                     })
                     .into_iter()

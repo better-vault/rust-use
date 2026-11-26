@@ -18,6 +18,7 @@ name = "rust_use"
 all-features = true
 
 [dependencies]
+gpui = { workspace = true, optional = true }
 serde_json.workspace = true
 rust-use-core.workspace = true
 rust-use-macros = { workspace = true, optional = true }
@@ -28,9 +29,13 @@ rust-use-gpui = { workspace = true, optional = true }
 default = ["macros", "agent"]
 macros = ["dep:rust-use-macros"]
 agent = ["dep:rust-use-agent"]
-gpui = ["agent", "dep:rust-use-gpui"]
+gpui = ["agent", "macros", "dep:gpui", "dep:rust-use-gpui"]
 ipc = ["agent", "rust-use-agent/ipc"]
 mcp = ["agent", "rust-use-agent/mcp"]
+
+[[example]]
+name = "gpui_counter"
+required-features = ["gpui"]
 
 [lints]
 workspace = true

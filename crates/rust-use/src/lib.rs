@@ -8,7 +8,7 @@
 //!
 //! - `macros` enables procedural macros and is enabled by default.
 //! - `agent` enables the agent bridge and is enabled by default.
-//! - `gpui` enables the GPUI adapter and the agent bridge.
+//! - `gpui` enables the GPUI adapter, the agent bridge, and procedural macros.
 //! - `ipc` serves the bridge over local sockets.
 //! - `mcp` serves the agent bridge over MCP stdio.
 
@@ -70,6 +70,8 @@ pub use rust_use_agent::{
 };
 #[cfg(feature = "gpui")]
 pub use rust_use_gpui as gpui;
+#[cfg(feature = "gpui")]
+pub use rust_use_gpui::{HandleExt, UiBinding, UiExt};
 
 #[doc(hidden)]
 pub mod __private {
@@ -112,6 +114,8 @@ pub mod prelude {
         DragDrop, Field, Handle, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive,
         Query, Ref, RovingFocus, Selection, SelectionMode, Toggle, Typeahead, Ui, Value,
     };
+    #[cfg(feature = "gpui")]
+    pub use crate::{HandleExt, UiBinding, UiExt};
     #[cfg(feature = "agent")]
     pub use crate::{UiAgentExt, step};
 }

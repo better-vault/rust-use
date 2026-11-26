@@ -14,8 +14,8 @@ description = "GPUI adapter for rust-use."
 all-features = true
 
 [dependencies]
+futures = "0.3"
 rust-use-core.workspace = true
-rust-use-agent.workspace = true
 gpui.workspace = true
 
 [features]

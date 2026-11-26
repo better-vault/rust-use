@@ -4674,6 +4674,7 @@ dependencies = [
 name = "rust-use"
 version = "0.1.0"
 dependencies = [
+ "gpui",
  "rust-use-agent",
  "rust-use-core",
  "rust-use-gpui",
@@ -4721,8 +4722,8 @@ dependencies = [
 name = "rust-use-gpui"
 version = "0.1.0"
 dependencies = [
+ "futures",
  "gpui",
- "rust-use-agent",
  "rust-use-core",
 ]
 

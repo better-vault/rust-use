@@ -1,0 +1,1 @@
+{"mcpServers":{"ui-automation":{"command":"target/release/chess-mcp-baseline","args":["--app","chess"]}}}

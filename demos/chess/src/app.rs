@@ -36,10 +36,19 @@ impl ChessApp {
     pub fn serve(&mut self, name: &str) -> Result<(), IpcError> {
         let board = self.board.clone();
         let metrics = self.metrics.clone();
+        let controls = metrics.clone();
         self.server = Some(
             Server::new(&self.ui)
                 .endpoint(Endpoint::new(name)?)
                 .command("a11y", move |args| a11y::handle(&board, args))
+                .command("metrics", move |args| {
+                    match args {
+                        "" => (),
+                        "reset" => controls.reset(),
+                        _ => return "err expected metrics [reset]".into(),
+                    }
+                    serde_json::json!(controls.snapshot()).to_string()
+                })
                 .observe(move |log| metrics.observe(log))
                 .spawn()?,
         );

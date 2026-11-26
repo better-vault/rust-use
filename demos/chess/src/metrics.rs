@@ -1,12 +1,14 @@
 //! Traffic observed at the IPC payload boundary, including failed commands.
 use rust_use::prelude::RequestLog;
+use serde::Serialize;
 use std::{
     sync::{Arc, Mutex, MutexGuard},
     time::Duration,
 };
 
 /// Automation interface used by a request.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Transport {
     /// Agent text protocol.
     Native,
@@ -15,7 +17,7 @@ pub enum Transport {
 }
 
 /// Cumulative measurements for one transport.
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, Serialize)]
 pub struct Traffic {
     /// Number of answered requests.
     pub calls: u64,
@@ -50,7 +52,7 @@ impl Traffic {
 }
 
 /// A consistent snapshot of both transports.
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, Serialize)]
 pub struct MetricsView {
     /// Native protocol totals.
     pub native: Traffic,
@@ -88,6 +90,9 @@ impl Metrics {
         self.updates.clone()
     }
     pub(crate) fn observe(&self, log: &RequestLog<'_>) {
+        if log.request.split_whitespace().next() == Some("metrics") {
+            return;
+        }
         let mut view = self.lock();
         let kind = if log.request.split_whitespace().next() == Some("a11y") {
             Transport::Baseline

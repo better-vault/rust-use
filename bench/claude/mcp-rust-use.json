@@ -1,0 +1,1 @@
+{"mcpServers":{"rust-use":{"command":"target/release/rust-use","args":["--app","chess","mcp"]}}}

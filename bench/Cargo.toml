@@ -1,0 +1,22 @@
+[package]
+name = "rust-use-bench"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+chess-demo = { path = "../demos/chess", default-features = false }
+rust-use = { path = "../crates/rust-use", features = ["ipc"] }
+serde_json.workspace = true
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+criterion = "0.7"
+
+[[bench]]
+name = "transport"
+harness = false
+
+[lints]
+workspace = true

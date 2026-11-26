@@ -1,6 +1,5 @@
 //! Compare payload traffic and wall time for complete Opera Game replays.
 use chess_demo::games::OPERA_GAME;
-use chrono::{DateTime, Utc};
 use rust_use_bench::{BenchResult, Session};
 use serde_json::json;
 use std::{
@@ -77,7 +76,7 @@ fn main() -> BenchResult<()> {
         println!();
         ratios.push(json!({"generic_over":label,"ratios":ratios_row}));
     }
-    let date = DateTime::<Utc>::from(SystemTime::now()).date_naive();
+    let date = utc_date(SystemTime::now());
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("results");
     fs::create_dir_all(&dir)?;
     fs::write(
@@ -85,4 +84,22 @@ fn main() -> BenchResult<()> {
         serde_json::to_string_pretty(&json!({"variants":rows,"ratios":ratios}))? + "\n",
     )?;
     Ok(())
+}
+
+/// `YYYY-MM-DD` in UTC, from Howard Hinnant's days-to-civil algorithm, so the bench needs no
+/// date crate for one file name.
+fn utc_date(now: SystemTime) -> String {
+    let secs = now
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let days = i64::try_from(secs / 86_400).unwrap_or(0) + 719_468;
+    let era = days.div_euclid(146_097);
+    let doe = days.rem_euclid(146_097);
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = yoe + era * 400 + i64::from(month <= 2);
+    format!("{year:04}-{month:02}-{day:02}")
 }

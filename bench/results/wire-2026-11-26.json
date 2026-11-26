@@ -1,56 +1,56 @@
 {
-  "variants": [
-    {
-      "variant": "rust-use (act per move)",
-      "measurements": {
-        "requests": 34,
-        "request_bytes": 635,
-        "reply_bytes": 4994,
-        "estimated_tokens": 1408,
-        "wall_ms": 1.585041
-      }
-    },
-    {
-      "variant": "rust-use (one batched act)",
-      "measurements": {
-        "requests": 2,
-        "request_bytes": 571,
-        "reply_bytes": 591,
-        "estimated_tokens": 291,
-        "wall_ms": 0.24829099999999998
-      }
-    },
-    {
-      "variant": "generic automation",
-      "measurements": {
-        "requests": 100,
-        "request_bytes": 1221,
-        "reply_bytes": 241599,
-        "estimated_tokens": 60705,
-        "wall_ms": 7.756167
-      }
-    }
-  ],
   "ratios": [
     {
       "generic_over": "act per move",
       "ratios": {
-        "requests": 2.9411764705882355,
+        "estimated_tokens": 43.08374733853797,
+        "reply_bytes": 48.3391356542617,
         "request_bytes": 1.9228346456692913,
-        "reply_bytes": 48.37785342410893,
-        "estimated_tokens": 43.11434659090909,
-        "wall_ms": 4.893354178219996
+        "requests": 2.9411764705882355,
+        "wall_ms": 3.3794293810695857
       }
     },
     {
       "generic_over": "batched act",
       "ratios": {
-        "requests": 50.0,
-        "request_bytes": 2.138353765323993,
-        "reply_bytes": 408.79695431472084,
         "estimated_tokens": 208.60824742268042,
-        "wall_ms": 31.23821242010383
+        "reply_bytes": 408.79695431472084,
+        "request_bytes": 2.138353765323993,
+        "requests": 50.0,
+        "wall_ms": 45.29473366316407
       }
+    }
+  ],
+  "variants": [
+    {
+      "measurements": {
+        "estimated_tokens": 1409,
+        "reply_bytes": 4998,
+        "request_bytes": 635,
+        "requests": 34,
+        "wall_ms": 1.508958
+      },
+      "variant": "rust-use (act per move)"
+    },
+    {
+      "measurements": {
+        "estimated_tokens": 291,
+        "reply_bytes": 591,
+        "request_bytes": 571,
+        "requests": 2,
+        "wall_ms": 0.112583
+      },
+      "variant": "rust-use (one batched act)"
+    },
+    {
+      "measurements": {
+        "estimated_tokens": 60705,
+        "reply_bytes": 241599,
+        "request_bytes": 1221,
+        "requests": 100,
+        "wall_ms": 5.099417
+      },
+      "variant": "generic automation"
     }
   ]
 }

@@ -24,5 +24,6 @@ proc-macro-crate.workspace = true
 heck.workspace = true
 
 [dev-dependencies]
-rust-use-core.workspace = true
+# Path-only so `cargo package` strips it before the core crate is on crates.io.
+rust-use-core = { path = "../rust-use-core" }
 trybuild.workspace = true

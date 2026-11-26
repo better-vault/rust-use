@@ -76,9 +76,8 @@ jobs:
 
       - name: Dry-run publishing for leaf crates
         if: github.event_name == 'workflow_dispatch' && inputs.dry-run
-        # Cargo verifies packages against crates.io, where workspace dependencies
-        # are unavailable before the first release. These crates have none.
+        # Cargo verifies a package against crates.io, so only crates with no
+        # unpublished workspace dependencies can be dry-run before a release.
         run: |
           cargo publish -p rust-use-core --dry-run
           cargo publish -p rust-use-macros --dry-run
-          cargo publish -p rust-use-cli --dry-run

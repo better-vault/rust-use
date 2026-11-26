@@ -20,6 +20,8 @@ allow = [
     "BSL-1.0",
     # OSI-approved; reaches us through gpui -> image -> rav1e -> libfuzzer-sys.
     "NCSA",
+    # Public-domain-equivalent; used by interprocess's recvmsg and doctest-file.
+    "0BSD",
 ]
 confidence-threshold = 0.8
 

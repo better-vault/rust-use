@@ -29,7 +29,7 @@ default = ["macros", "agent"]
 macros = ["dep:rust-use-macros"]
 agent = ["dep:rust-use-agent"]
 gpui = ["agent", "dep:rust-use-gpui"]
-ipc = ["agent"]
+ipc = ["agent", "rust-use-agent/ipc"]
 mcp = ["agent"]
 
 [lints]

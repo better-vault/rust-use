@@ -10,3 +10,6 @@ pub use agent::{Agent, UiAgentExt};
 pub use types::{
     ActError, ActOutcome, Diff, QueryOutcome, Script, Snapshot, SnapshotOptions, Step, step,
 };
+
+#[cfg(feature = "ipc")]
+pub mod ipc;

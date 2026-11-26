@@ -9,7 +9,8 @@
 //! - `macros` enables procedural macros and is enabled by default.
 //! - `agent` enables the agent bridge and is enabled by default.
 //! - `gpui` enables the GPUI adapter and the agent bridge.
-//! - `ipc` and `mcp` currently enable the agent bridge and reserve future integrations.
+//! - `ipc` serves the bridge over local sockets.
+//! - `mcp` enables the agent bridge.
 
 #![cfg_attr(
     feature = "macros",
@@ -58,6 +59,8 @@ pub use rust_use_core::{
 
 #[cfg(feature = "agent")]
 pub use rust_use_agent as agent;
+#[cfg(feature = "ipc")]
+pub use rust_use_agent::ipc;
 #[cfg(feature = "agent")]
 pub use rust_use_agent::{
     ActError, ActOutcome, Agent, Diff, QueryOutcome, Script, Snapshot, SnapshotOptions, Step,
@@ -96,6 +99,10 @@ pub mod prelude {
     //! Common imports for applications using `rust-use`.
     #[cfg(feature = "macros")]
     pub use crate::actions;
+    #[cfg(feature = "ipc")]
+    pub use crate::ipc::{
+        Client, Endpoint, IpcError, RequestLog, Server, ServerGuard, list_endpoints,
+    };
     pub use crate::{
         ActionError, ActionSpec, Args, Behavior, ChangeSource, ComponentId, Decision, Describe,
         DragDrop, Field, Handle, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive,

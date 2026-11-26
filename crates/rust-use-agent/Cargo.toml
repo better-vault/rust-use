@@ -10,7 +10,14 @@ keywords.workspace = true
 categories.workspace = true
 description = "The agent bridge for rust-use: compact snapshots, batched actions, queries and permissions."
 
+[features]
+ipc = ["dep:interprocess", "dep:rustix"]
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1", features = ["fs", "process"], optional = true }
+
 [dependencies]
+interprocess = { version = "2", optional = true }
 rust-use-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true

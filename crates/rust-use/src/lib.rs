@@ -13,12 +13,11 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-#[expect(
-    unused_imports,
-    unreachable_pub,
-    reason = "The core crate has no public items yet"
-)]
-pub use rust_use_core::*;
+pub use rust_use_core::{
+    ActionError, ActionRequest, ActionSpec, Args, Behavior, ChangeEvent, ChangeKind, ChangeSet,
+    ChangeSource, ComponentId, ComponentInfo, Decision, Describe, Handle, InvokeError, Page,
+    ParamSpec, Primitive, Query, Ref, ResolveError, Subscription, Ui, Value,
+};
 
 #[cfg(feature = "agent")]
 pub use rust_use_agent as agent;
@@ -26,5 +25,9 @@ pub use rust_use_agent as agent;
 pub use rust_use_gpui as gpui;
 
 pub mod prelude {
-    //! Common imports for applications using `rust-use` will be collected here.
+    //! Common imports for applications using `rust-use`.
+    pub use crate::{
+        ActionSpec, Args, Behavior, ChangeSource, ComponentId, Decision, Describe, Handle, Page,
+        ParamSpec, Primitive, Query, Ref, Ui, Value,
+    };
 }

@@ -13,3 +13,8 @@ description = "Core state, primitives and behaviors for rust-use."
 
 [lints]
 workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

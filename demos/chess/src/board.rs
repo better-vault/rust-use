@@ -129,6 +129,19 @@ impl Board {
             .filter_map(UciMove::to)
             .collect()
     }
+    /// Origin and destination of the last move, in board coordinates.
+    pub fn last_move(&self) -> Option<(Square, Square)> {
+        let uci = self.last.as_ref()?.parse::<UciMove>().ok()?;
+        Some((uci.from()?, uci.to()?))
+    }
+    /// Square of the king under attack.
+    pub fn checked_king(&self) -> Option<Square> {
+        if self.check {
+            self.position.board().king_of(self.position.turn())
+        } else {
+            None
+        }
+    }
     /// Played moves in standard algebraic notation, one entry per ply.
     pub fn history_san(&self) -> Vec<String> {
         self.history.iter().map(|(_, _, san)| san.clone()).collect()

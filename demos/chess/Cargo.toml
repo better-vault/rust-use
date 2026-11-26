@@ -6,6 +6,8 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+gpui.workspace = true
+async-channel = "2"
 rust-use = { path = "../../crates/rust-use", features = ["gpui", "ipc"] }
 shakmaty = "0.30"
 serde_json.workspace = true

@@ -61,13 +61,31 @@ pub struct MetricsView {
 }
 
 /// Thread-safe collector shared between the server and the GUI.
-#[derive(Clone, Default)]
-pub struct Metrics(Arc<Mutex<MetricsView>>);
+#[derive(Clone)]
+pub struct Metrics {
+    view: Arc<Mutex<MetricsView>>,
+    changed: async_channel::Sender<()>,
+    updates: async_channel::Receiver<()>,
+}
+impl Default for Metrics {
+    fn default() -> Self {
+        let (changed, updates) = async_channel::bounded(1);
+        Self {
+            view: Arc::default(),
+            changed,
+            updates,
+        }
+    }
+}
 impl Metrics {
     fn lock(&self) -> MutexGuard<'_, MetricsView> {
-        self.0
+        self.view
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+    /// Coalesced wakeups for the window. Read the latest snapshot on receipt.
+    pub fn updates(&self) -> async_channel::Receiver<()> {
+        self.updates.clone()
     }
     pub(crate) fn observe(&self, log: &RequestLog<'_>) {
         let mut view = self.lock();
@@ -85,6 +103,8 @@ impl Metrics {
         traffic.request_bytes += log.request.len();
         traffic.reply_bytes += log.reply.len();
         traffic.total_latency += log.elapsed;
+        drop(view);
+        let _ = self.changed.try_send(());
     }
     /// Read both sets of measurements atomically.
     pub fn snapshot(&self) -> MetricsView {
@@ -93,6 +113,7 @@ impl Metrics {
     /// Clear both sets of measurements atomically.
     pub fn reset(&self) {
         *self.lock() = MetricsView::default();
+        let _ = self.changed.try_send(());
     }
 }
 

@@ -5,6 +5,7 @@
 
 mod action;
 mod behavior;
+mod behaviors;
 mod describe;
 mod error;
 mod ui;
@@ -12,6 +13,10 @@ mod value;
 
 pub use action::{ActionRequest, ActionSpec, ChangeSource, Decision, ParamSpec};
 pub use behavior::{Behavior, Page, Primitive, Query};
+pub use behaviors::{
+    DragDrop, Field, Key, List, Orientation, Popup, Press, RovingFocus, Selection, SelectionMode,
+    Toggle, Typeahead,
+};
 pub use describe::Describe;
 pub use error::{ActionError, InvokeError, ResolveError};
 pub use ui::{

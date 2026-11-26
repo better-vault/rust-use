@@ -11,12 +11,49 @@
 //! - `gpui` enables the GPUI adapter and the agent bridge.
 //! - `ipc` and `mcp` currently enable the agent bridge and reserve future integrations.
 
+#![cfg_attr(
+    feature = "macros",
+    doc = r#"
+## Embedding behaviors
+
+Use a `#[behavior]` field to expose a behavior's description, actions and queries
+through a primitive. The same field provides typed methods for application code.
+
+```
+use rust_use::prelude::*;
+
+#[derive(Primitive)]
+#[primitive(no_actions)]
+struct Control<B: Behavior> {
+    #[behavior]
+    input: B,
+}
+
+let ui = Ui::new();
+let switch = ui.mount(Control { input: Toggle::default() });
+ui.invoke(switch.id(), "toggle", (), ChangeSource::Agent)?;
+assert_eq!(switch.read(|c| c.input.is_on()), Some(true));
+
+let _button = Control { input: Press::new() };
+let _field = Control { input: Field::new(42) };
+let _choices = Control { input: Selection::<String>::new(SelectionMode::Multiple) };
+let _list = Control { input: List::new(vec!["pear", "plum"]) };
+let _focus = Control { input: RovingFocus::new(Orientation::Vertical, 2) };
+let _search = Control { input: Typeahead::default() };
+let _menu = Control { input: Popup::default() };
+let _board = Control { input: DragDrop::<u64>::default() };
+# Ok::<(), rust_use::InvokeError>(())
+```
+"#
+)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub use rust_use_core::{
     ActionError, ActionRequest, ActionSpec, Args, Behavior, ChangeEvent, ChangeKind, ChangeSet,
-    ChangeSource, ComponentId, ComponentInfo, Decision, Describe, Handle, InvokeError, Page,
-    ParamSpec, Primitive, Query, Ref, ResolveError, Subscription, Ui, Value,
+    ChangeSource, ComponentId, ComponentInfo, Decision, Describe, DragDrop, Field, Handle,
+    InvokeError, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive, Query, Ref,
+    ResolveError, RovingFocus, Selection, SelectionMode, Subscription, Toggle, Typeahead, Ui,
+    Value,
 };
 
 #[cfg(feature = "agent")]
@@ -56,6 +93,7 @@ pub mod prelude {
     pub use crate::actions;
     pub use crate::{
         ActionError, ActionSpec, Args, Behavior, ChangeSource, ComponentId, Decision, Describe,
-        Handle, Page, ParamSpec, Primitive, Query, Ref, Ui, Value,
+        DragDrop, Field, Handle, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive,
+        Query, Ref, RovingFocus, Selection, SelectionMode, Toggle, Typeahead, Ui, Value,
     };
 }

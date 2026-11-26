@@ -18,11 +18,14 @@ allow = [
     "MPL-2.0",
     "CC0-1.0",
     "BSL-1.0",
+    # OSI-approved; reaches us through gpui -> image -> rav1e -> libfuzzer-sys.
+    "NCSA",
 ]
 confidence-threshold = 0.8
 
 [bans]
-multiple-versions = "warn"
+# GPUI's dependency tree carries many duplicate versions we cannot resolve from here.
+multiple-versions = "allow"
 wildcards = "deny"
 allow-wildcard-paths = true
 

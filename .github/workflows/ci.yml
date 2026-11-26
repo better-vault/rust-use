@@ -75,7 +75,6 @@ jobs:
         with:
           toolchain: ${{ steps.msrv.outputs.version }}
       - uses: Swatinem/rust-cache@v2
-      # rust-toolchain.toml would otherwise override the installed MSRV with stable.
       - run: cargo +${{ steps.msrv.outputs.version }} check --workspace --exclude rust-use-gpui
 
   deny:

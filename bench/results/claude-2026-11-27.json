@@ -1,0 +1,358 @@
+{
+  "date": "2026-11-27",
+  "summary": {
+    "generic": {
+      "tool_calls": 70,
+      "input_tokens": 139838,
+      "output_tokens": 4830,
+      "duration_s": 31.317,
+      "cost_usd": 0.1610074,
+      "turns": 71,
+      "runs": 3,
+      "verified": 3
+    },
+    "rust-use-cli": {
+      "tool_calls": 3,
+      "input_tokens": 24147,
+      "output_tokens": 732,
+      "duration_s": 7.749,
+      "cost_usd": 0.0284767,
+      "turns": 4,
+      "runs": 3,
+      "verified": 3
+    },
+    "rust-use-mcp": {
+      "tool_calls": 3,
+      "input_tokens": 19179,
+      "output_tokens": 795,
+      "duration_s": 7.979,
+      "cost_usd": 0.0267584,
+      "turns": 4,
+      "runs": 3,
+      "verified": 3
+    }
+  },
+  "runs": {
+    "generic": [
+      {
+        "tool_calls": 70,
+        "input_tokens": 139838,
+        "input_fresh": 20,
+        "input_cache_write": 25304,
+        "input_cache_read": 114514,
+        "output_tokens": 4830,
+        "duration_s": 31.317,
+        "cost_usd": 0.1610074,
+        "turns": 71,
+        "is_error": false,
+        "verified": true,
+        "model": "sonnet",
+        "app": {
+          "native": {
+            "calls": 0,
+            "request_bytes": 0,
+            "reply_bytes": 0,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 0
+            }
+          },
+          "baseline": {
+            "calls": 70,
+            "request_bytes": 951,
+            "reply_bytes": 28930,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 4327539
+            }
+          },
+          "last": "baseline"
+        }
+      },
+      {
+        "tool_calls": 69,
+        "input_tokens": 96322,
+        "input_fresh": 16,
+        "input_cache_write": 20538,
+        "input_cache_read": 75768,
+        "output_tokens": 4774,
+        "duration_s": 28.503,
+        "cost_usd": 0.1375008,
+        "turns": 70,
+        "is_error": false,
+        "verified": true,
+        "model": "sonnet",
+        "app": {
+          "native": {
+            "calls": 0,
+            "request_bytes": 0,
+            "reply_bytes": 0,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 0
+            }
+          },
+          "baseline": {
+            "calls": 69,
+            "request_bytes": 942,
+            "reply_bytes": 21721,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 3087622
+            }
+          },
+          "last": "baseline"
+        }
+      },
+      {
+        "tool_calls": 71,
+        "input_tokens": 170444,
+        "input_fresh": 22,
+        "input_cache_write": 27607,
+        "input_cache_read": 142815,
+        "output_tokens": 4937,
+        "duration_s": 32.197,
+        "cost_usd": 0.17412350000000001,
+        "turns": 72,
+        "is_error": false,
+        "verified": true,
+        "model": "sonnet",
+        "app": {
+          "native": {
+            "calls": 0,
+            "request_bytes": 0,
+            "reply_bytes": 0,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 0
+            }
+          },
+          "baseline": {
+            "calls": 71,
+            "request_bytes": 960,
+            "reply_bytes": 35959,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 4117707
+            }
+          },
+          "last": "baseline"
+        }
+      }
+    ],
+    "rust-use-cli": [
+      {
+        "tool_calls": 3,
+        "input_tokens": 24137,
+        "input_fresh": 8,
+        "input_cache_write": 4802,
+        "input_cache_read": 19327,
+        "output_tokens": 732,
+        "duration_s": 7.749,
+        "cost_usd": 0.0284767,
+        "turns": 4,
+        "is_error": false,
+        "verified": true,
+        "model": "sonnet",
+        "app": {
+          "native": {
+            "calls": 3,
+            "request_bytes": 589,
+            "reply_bytes": 808,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 142666
+            }
+          },
+          "baseline": {
+            "calls": 0,
+            "request_bytes": 0,
+            "reply_bytes": 0,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 0
+            }
+          },
+          "last": "native"
+        }
+      },
+      {
+        "tool_calls": 3,
+        "input_tokens": 24147,
+        "input_fresh": 8,
+        "input_cache_write": 4803,
+        "input_cache_read": 19336,
+        "output_tokens": 761,
+        "duration_s": 7.985,
+        "cost_usd": 0.0287716,
+        "turns": 4,
+        "is_error": false,
+        "verified": true,
+        "model": "sonnet",
+        "app": {
+          "native": {
+            "calls": 3,
+            "request_bytes": 589,
+            "reply_bytes": 809,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 144375
+            }
+          },
+          "baseline": {
+            "calls": 0,
+            "request_bytes": 0,
+            "reply_bytes": 0,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 0
+            }
+          },
+          "last": "native"
+        }
+      },
+      {
+        "tool_calls": 3,
+        "input_tokens": 24157,
+        "input_fresh": 8,
+        "input_cache_write": 4805,
+        "input_cache_read": 19344,
+        "output_tokens": 728,
+        "duration_s": 7.551,
+        "cost_usd": 0.0284504,
+        "turns": 4,
+        "is_error": false,
+        "verified": true,
+        "model": "sonnet",
+        "app": {
+          "native": {
+            "calls": 3,
+            "request_bytes": 589,
+            "reply_bytes": 809,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 151209
+            }
+          },
+          "baseline": {
+            "calls": 0,
+            "request_bytes": 0,
+            "reply_bytes": 0,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 0
+            }
+          },
+          "last": "native"
+        }
+      }
+    ],
+    "rust-use-mcp": [
+      {
+        "tool_calls": 3,
+        "input_tokens": 19396,
+        "input_fresh": 8,
+        "input_cache_write": 5745,
+        "input_cache_read": 13643,
+        "output_tokens": 838,
+        "duration_s": 8.092,
+        "cost_usd": 0.0327403,
+        "turns": 4,
+        "is_error": false,
+        "verified": true,
+        "model": "sonnet",
+        "app": {
+          "native": {
+            "calls": 3,
+            "request_bytes": 484,
+            "reply_bytes": 798,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 238667
+            }
+          },
+          "baseline": {
+            "calls": 0,
+            "request_bytes": 0,
+            "reply_bytes": 0,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 0
+            }
+          },
+          "last": "native"
+        }
+      },
+      {
+        "tool_calls": 3,
+        "input_tokens": 19179,
+        "input_fresh": 8,
+        "input_cache_write": 4327,
+        "input_cache_read": 14844,
+        "output_tokens": 795,
+        "duration_s": 7.979,
+        "cost_usd": 0.0267584,
+        "turns": 4,
+        "is_error": false,
+        "verified": true,
+        "model": "sonnet",
+        "app": {
+          "native": {
+            "calls": 3,
+            "request_bytes": 484,
+            "reply_bytes": 805,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 305333
+            }
+          },
+          "baseline": {
+            "calls": 0,
+            "request_bytes": 0,
+            "reply_bytes": 0,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 0
+            }
+          },
+          "last": "native"
+        }
+      },
+      {
+        "tool_calls": 3,
+        "input_tokens": 19061,
+        "input_fresh": 8,
+        "input_cache_write": 4250,
+        "input_cache_read": 14803,
+        "output_tokens": 711,
+        "duration_s": 7.119,
+        "cost_usd": 0.025606300000000002,
+        "turns": 4,
+        "is_error": false,
+        "verified": true,
+        "model": "sonnet",
+        "app": {
+          "native": {
+            "calls": 3,
+            "request_bytes": 484,
+            "reply_bytes": 806,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 302000
+            }
+          },
+          "baseline": {
+            "calls": 0,
+            "request_bytes": 0,
+            "reply_bytes": 0,
+            "total_latency": {
+              "secs": 0,
+              "nanos": 0
+            }
+          },
+          "last": "native"
+        }
+      }
+    ]
+  }
+}

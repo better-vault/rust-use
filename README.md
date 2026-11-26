@@ -136,9 +136,27 @@ It can connect three ways:
 
 ## Benchmark
 
-The chess demo plays the same game through generic MCP UI automation and through rust-use, with
-Claude Code as the player. Results, method and the exact commands will be published here when the
-benchmark lands. Until then, there are no numbers to quote.
+Claude Code (Sonnet 5.5) plays a complete chess game, the 33-ply
+[Opera Game](https://en.wikipedia.org/wiki/Opera_Game), in the running GPUI chess demo. It plays the
+same app, the same board and the same prompt through each interface. Every run below ended in
+checkmate on the expected position. Values are medians of 3 runs.
+
+| | Tool calls | Input tokens | Time | Cost |
+| --- | ---: | ---: | ---: | ---: |
+| Generic UI automation (MCP: UI tree + click) | 70 | 139,838 | 31 s | $0.161 |
+| **rust-use** (MCP) | **3** | **19,179** | **8 s** | **$0.027** |
+| **rust-use** (CLI over a local socket) | **3** | **24,147** | **8 s** | **$0.028** |
+
+That is **23× fewer tool calls, 7.3× fewer input tokens, 3.9× faster and 6× cheaper** for the same
+finished game. rust-use over MCP and rust-use over the CLI land in the same place, so the saving
+comes from the interface, not the transport. The agent sees one line for the board, and every
+`act` returns only what changed.
+
+On the wire, with no model involved, replaying the game through generic automation moves **43×
+more tokens** than rust-use with one `act` per move, and **208× more** than a single batched `act`.
+
+Method, fairness notes and the commands to reproduce all of this are in
+[`bench/README.md`](bench/README.md). The numbers are self-reported, from one machine.
 
 ## Example: the chess demo
 

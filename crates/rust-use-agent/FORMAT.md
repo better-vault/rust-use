@@ -19,6 +19,8 @@ one `Ui` instance across connections. `hello` leaves the connection's revision c
 
 ## Snapshot
 
+Send `snapshot [--verbose] [--from @id] [--limit n]`.
+
 ```
 rev 7
 @1 mute-button "Mute" =false volume=40 !toggle !set_volume(volume:int)
@@ -46,14 +48,37 @@ rev 7
   - **numbers and booleans**: as JSON.
   - **lists**: `[a,b,c]`, with items formatted by the same rules.
   - **objects**: compact JSON. Avoid them; a component should flatten into attributes.
-- Action docs are not repeated in a snapshot. `snapshot --verbose` (or
-  `SnapshotOptions { docs: true }`) appends an indented `# <doc>` line under each component, one
-  per action, for the first time an agent meets a screen.
+- Action docs are omitted by default. `snapshot --verbose` (or
+  `SnapshotOptions { docs: true, ..SnapshotOptions::default() }`) appends indented `# <doc>`
+  lines under each component. These lines do not count toward the component limit.
+- Each page includes up to 100 components by default. Use `--limit n` to set a different
+  maximum. Use `--from @id` to start at that id or the next mounted id.
+- If more components remain, the final line is `more <remaining count> from=@<next id>`.
+  Pass that id as `--from` on the next snapshot. The final page has no `more` line.
+  A limit of zero returns just the revision and any continuation.
+- Structured snapshots include `more` with fields `remaining` and `from` (a numeric id)
+  when there is a continuation.
+
+`snapshot --from @2 --limit 1` returns:
+
+```
+rev 7
+@2 board "Chess board" ="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1" turn=b check !move(uci) !undo
+more 1 from=@3
+```
+
+`snapshot --from @3 --limit 1` returns:
+
+```
+rev 7
+@3 select "Country" =Sweden open ?query
+```
 
 ## Diff
 
 The same lines as a snapshot, for only the components that changed since a revision, plus one
-removal line per unmounted component:
+removal line per unmounted component. The change set is uncapped, including when returned by
+`act`.
 
 ```
 rev 9
@@ -109,6 +134,8 @@ The error line comes first, then the diff of whatever the earlier steps changed.
 
 ## Query
 
+To search a component's options, start with its reference.
+
 ```
 query "Country" sw            → text filter "sw", from 0
 query "Country" sw from=50
@@ -116,3 +143,26 @@ query "Country" sw from=50
 
 The reply is one value per line, then `more from=<n>` when there are further pages, or `total <n>`
 on the last page.
+
+To find components, send `query --kind <kind> [text] [--from @id] [--limit n]` or
+`query --text <text> [--from @id] [--limit n]`. The kind filter uses the exact primitive name.
+Text matches a case-insensitive substring of the label, kind, or primary value. Text containing
+whitespace can be double-quoted.
+
+The reply uses snapshot format, including the revision line and the same default limit of 100.
+The `more` line counts remaining matches and gives the next matching id. Repeat the same filter
+with that id as `--from` to continue. Both forms of `query` leave the diff cursor unchanged.
+
+`query --kind select SWE` returns:
+
+```
+rev 7
+@3 select "Country" =Sweden open ?query
+```
+
+`query --text "CHESS BOARD"` returns:
+
+```
+rev 7
+@2 board "Chess board" ="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1" turn=b check !move(uci) !undo
+```

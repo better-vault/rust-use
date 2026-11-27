@@ -1,4 +1,4 @@
-use crate::{ActError, Step, step};
+use crate::{ActError, SnapshotOptions, Step, step};
 use rust_use_core::{Ref, Value};
 use serde_json::{Deserializer, Number};
 
@@ -178,11 +178,7 @@ impl<'a> Parser<'a> {
         self.gap()?;
         let mut text = None;
         if !self.rest.is_empty() && !self.rest.starts_with("from=") {
-            text = Some(if self.rest.starts_with('"') {
-                self.json()?
-            } else {
-                self.word()?.to_owned()
-            });
+            text = Some(self.text()?);
             self.gap()?;
         }
         let from = if self.rest.is_empty() {
@@ -194,6 +190,65 @@ impl<'a> Parser<'a> {
                 .ok_or_else(|| self.error("expected from=<offset>"))?
         };
         Ok((target, text, from))
+    }
+
+    fn text(&mut self) -> Result<String, Syntax> {
+        if self.rest.starts_with('"') {
+            self.json()
+        } else {
+            self.word().map(str::to_owned)
+        }
+    }
+
+    pub(crate) fn search(
+        mut self,
+    ) -> Result<(Option<String>, Option<String>, SnapshotOptions), Syntax> {
+        let flag = self.word()?;
+        self.gap()?;
+        let (kind, text) = match flag {
+            "--kind" => {
+                let kind = self.text()?;
+                self.gap()?;
+                let text = if self.rest.is_empty() || self.rest.starts_with("--") {
+                    None
+                } else {
+                    Some(self.text()?)
+                };
+                (Some(kind), text)
+            }
+            "--text" => (None, Some(self.text()?)),
+            _ => return Err(self.error("expected --kind or --text")),
+        };
+        self.gap()?;
+        Ok((kind, text, self.page_options(false)?))
+    }
+
+    pub(crate) fn page_options(mut self, verbose: bool) -> Result<SnapshotOptions, Syntax> {
+        let mut opts = SnapshotOptions::default();
+        while !self.rest.is_empty() {
+            let flag = self.word()?;
+            self.gap()?;
+            match flag {
+                "--verbose" if verbose => opts.docs = true,
+                "--from" => {
+                    let id = self.word()?;
+                    opts.from = Some(
+                        id.strip_prefix('@')
+                            .and_then(|_| id.parse().ok())
+                            .ok_or_else(|| self.error("expected @ followed by a component id"))?,
+                    );
+                }
+                "--limit" => {
+                    opts.limit = self
+                        .word()?
+                        .parse()
+                        .map_err(|_| self.error("expected a nonnegative limit"))?;
+                }
+                _ => return Err(self.error(format!("unexpected option `{flag}`"))),
+            }
+            self.gap()?;
+        }
+        Ok(opts)
     }
 }
 

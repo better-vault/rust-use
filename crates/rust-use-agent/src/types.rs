@@ -3,14 +3,36 @@ use rust_use_core::{Args, ComponentId, ComponentInfo, InvokeError, Page, Ref, Va
 use serde_json::json;
 use std::fmt::{self, Display, Formatter};
 
-/// Controls optional snapshot detail.
-#[derive(Debug, Clone, Copy, Default)]
+/// Controls component paging and optional action documentation.
+#[derive(Debug, Clone, Copy)]
 pub struct SnapshotOptions {
     /// Include documentation for enabled actions.
     pub docs: bool,
+    /// Maximum number of component entries. Defaults to 100.
+    pub limit: usize,
+    /// Start at this component id or the next available id.
+    pub from: Option<ComponentId>,
+}
+impl Default for SnapshotOptions {
+    fn default() -> Self {
+        Self {
+            docs: false,
+            limit: 100,
+            from: None,
+        }
+    }
 }
 
-/// A complete view of the registry.
+/// Continuation for a page of components.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SnapshotMore {
+    /// Number of matching components after this page.
+    pub remaining: usize,
+    /// First matching id after this page, to use as the next inclusive start.
+    pub from: ComponentId,
+}
+
+/// A page of components from the registry.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Snapshot {
     /// Observed registry revision.
@@ -19,6 +41,8 @@ pub struct Snapshot {
     pub components: Vec<ComponentInfo>,
     /// Whether to include action documentation.
     pub docs: bool,
+    /// Continuation if more components match.
+    pub more: Option<SnapshotMore>,
 }
 impl Snapshot {
     /// Return structured content for transport clients.
@@ -28,7 +52,11 @@ impl Snapshot {
             .iter()
             .map(|c| format::json_component(c, self.docs))
             .collect();
-        json!({"revision": self.revision, "components": components})
+        let mut result = json!({"revision": self.revision, "components": components});
+        if let Some(more) = self.more {
+            result["more"] = json!({"remaining": more.remaining, "from": more.from.get()});
+        }
+        result
     }
 }
 impl Display for Snapshot {
@@ -36,6 +64,9 @@ impl Display for Snapshot {
         write!(f, "rev {}", self.revision)?;
         for c in &self.components {
             format::component(f, c, self.docs)?;
+        }
+        if let Some(more) = self.more {
+            write!(f, "\nmore {} from={}", more.remaining, more.from)?;
         }
         Ok(())
     }

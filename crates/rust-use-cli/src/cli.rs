@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use rust_use_core::ComponentId;
 
 /// Drive a running rust-use app.
 #[derive(Parser)]
@@ -7,9 +8,11 @@ use clap::{Parser, Subcommand};
     version,
     after_help = "Examples:
   rust-use snapshot --verbose
+  rust-use snapshot --from @101 --limit 50
   rust-use diff
   rust-use act 'board move e2e4; clock press'
   rust-use query Country sw --from 50
+  rust-use query --kind select Country
   rust-use raw echo hello
   rust-use list
   rust-use --app chess mcp"
@@ -29,6 +32,12 @@ pub(crate) enum Command {
         /// Include action documentation.
         #[arg(long)]
         verbose: bool,
+        /// Start at this component id, inclusive.
+        #[arg(long, value_name = "@ID")]
+        from: Option<ComponentId>,
+        /// Maximum number of components (default 100).
+        #[arg(long)]
+        limit: Option<usize>,
     },
     /// Read changes since the previous snapshot, act, or diff.
     Diff,
@@ -37,13 +46,26 @@ pub(crate) enum Command {
         #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
         script: Vec<String>,
     },
-    /// Search a component's options.
+    /// Search components or list a component's options.
+    #[command(group(clap::ArgGroup::new("component_search").args(["kind", "search_text"])))]
     Query {
-        #[arg(value_name = "REF")]
-        target: String,
+        /// Component reference, or a text filter when using --kind.
+        #[arg(value_name = "REF", required_unless_present_any = ["kind", "search_text"])]
+        target: Option<String>,
+        #[arg(conflicts_with = "kind")]
         text: Option<String>,
-        #[arg(long, value_name = "N")]
-        from: Option<usize>,
+        /// Filter components by exact kind.
+        #[arg(long)]
+        kind: Option<String>,
+        /// Search component labels, kinds, and values.
+        #[arg(long = "text", conflicts_with = "target")]
+        search_text: Option<String>,
+        /// Start at this component id for search or offset for option queries.
+        #[arg(long, value_name = "@ID|OFFSET")]
+        from: Option<String>,
+        /// Maximum number of matching components (default 100).
+        #[arg(long, requires = "component_search")]
+        limit: Option<usize>,
     },
     /// Send an arbitrary text protocol request.
     Raw {

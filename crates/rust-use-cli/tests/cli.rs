@@ -61,6 +61,18 @@ fn cli_session() -> Result<(), Box<dyn std::error::Error>> {
     ui.mount(Button(false));
     assert_eq!(run(&["diff"], 0)?, "rev 3\n@2 button =false !press");
     assert_eq!(run(&["diff"], 0)?, "rev 3");
+    assert_eq!(
+        run(&["snapshot", "--from", "@1", "--limit", "1"], 0)?,
+        "rev 3\n@1 button =true !press\nmore 1 from=@2"
+    );
+    assert_eq!(
+        run(&["query", "--kind", "button", "FALSE", "--from", "@1"], 0)?,
+        "rev 3\n@2 button =false !press"
+    );
+    assert_eq!(
+        run(&["query", "--text", "button", "--limit", "1"], 0)?,
+        "rev 3\n@1 button =true !press\nmore 1 from=@2"
+    );
     assert_eq!(run(&["query", "@1"], 0)?, "not queryable");
     assert_eq!(run(&["raw", "echo", "two", "words"], 0)?, "two words");
     assert!(run(&["act", "@1", "missing"], 1)?.starts_with("err 1"));

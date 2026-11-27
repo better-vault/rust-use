@@ -110,8 +110,8 @@ pub use rust_use_agent::ipc;
 pub use rust_use_agent::mcp;
 #[cfg(feature = "agent")]
 pub use rust_use_agent::{
-    ActError, ActOutcome, Agent, Diff, QueryOutcome, Script, Snapshot, SnapshotOptions, Step,
-    UiAgentExt, step,
+    ActError, ActOutcome, Agent, Diff, QueryOutcome, Script, Snapshot, SnapshotMore,
+    SnapshotOptions, Step, UiAgentExt, step,
 };
 #[cfg(feature = "gpui")]
 pub use rust_use_gpui as gpui;
@@ -162,5 +162,5 @@ pub mod prelude {
     #[cfg(feature = "gpui")]
     pub use crate::{HandleExt, UiBinding, UiExt};
     #[cfg(feature = "agent")]
-    pub use crate::{UiAgentExt, step};
+    pub use crate::{SnapshotOptions, UiAgentExt, step};
 }

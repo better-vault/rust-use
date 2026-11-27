@@ -20,12 +20,10 @@ doc = false
 [dependencies]
 clap = { workspace = true, features = ["env"] }
 rust-use-agent = { workspace = true, features = ["ipc", "mcp"] }
+rust-use-core.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "1", features = ["fs"] }
-
-[dev-dependencies]
-rust-use-core.workspace = true
 
 [lints]
 workspace = true

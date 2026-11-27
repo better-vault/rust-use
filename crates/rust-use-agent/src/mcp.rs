@@ -6,6 +6,7 @@ use rmcp::{
     service::QuitReason,
     tool, tool_handler, tool_router,
 };
+use rust_use_core::ComponentId;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::fmt::Write;
@@ -53,9 +54,53 @@ pub fn query_request(target: &str, text: Option<&str>, from: Option<usize>) -> S
     request
 }
 
+/// Encode a snapshot request with optional paging arguments.
+pub fn snapshot_request(verbose: bool, from: Option<ComponentId>, limit: Option<usize>) -> String {
+    let mut request = String::from("snapshot");
+    if verbose {
+        request.push_str(" --verbose");
+    }
+    append_paging(&mut request, from, limit);
+    request
+}
+
+/// Encode a component search, preserving literal kinds and filters.
+pub fn search_request(
+    kind: Option<&str>,
+    text: Option<&str>,
+    from: Option<ComponentId>,
+    limit: Option<usize>,
+) -> String {
+    let mut request = String::from("query ");
+    if let Some(kind) = kind {
+        request.push_str("--kind ");
+        let _ = crate::format::string(&mut request, kind, true);
+        if let Some(text) = text {
+            request.push(' ');
+            let _ = crate::format::string(&mut request, text, true);
+        }
+    } else {
+        request.push_str("--text ");
+        let _ = crate::format::string(&mut request, text.unwrap_or_default(), true);
+    }
+    append_paging(&mut request, from, limit);
+    request
+}
+
+fn append_paging(request: &mut String, from: Option<ComponentId>, limit: Option<usize>) {
+    if let Some(from) = from {
+        let _ = write!(request, " --from {from}");
+    }
+    if let Some(limit) = limit {
+        let _ = write!(request, " --limit {limit}");
+    }
+}
+
 #[derive(Deserialize, JsonSchema)]
 struct Snapshot {
     verbose: Option<bool>,
+    from: Option<String>,
+    limit: Option<usize>,
 }
 #[derive(Deserialize, JsonSchema)]
 struct Act {
@@ -142,13 +187,20 @@ impl<E: Endpoint> McpServer<E> {
         }
     }
 
-    #[tool(description = "Read the compact screen snapshot. Set verbose for action docs.")]
+    #[tool(
+        description = "Read up to limit screen components (default 100), starting at from (@id, inclusive). Set verbose for action docs. Follow the more line to page."
+    )]
     fn snapshot(&self, Parameters(input): Parameters<Snapshot>) -> CallToolResult {
-        self.reply(if input.verbose.unwrap_or(false) {
-            "snapshot --verbose"
-        } else {
-            "snapshot"
-        })
+        let Ok(from) = input.from.as_deref().map(str::parse).transpose() else {
+            return CallToolResult::error(vec![ContentBlock::text(
+                "err expected from to be a component id such as @101",
+            )]);
+        };
+        self.reply(&snapshot_request(
+            input.verbose.unwrap_or(false),
+            from,
+            input.limit,
+        ))
     }
 
     #[tool(
@@ -179,6 +231,8 @@ impl<E: Endpoint> ServerHandler for McpServer<E> {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("rust-use", env!("CARGO_PKG_VERSION")))
-            .with_instructions("Call snapshot once, then use act to receive what changed without repeating snapshots.")
+            .with_instructions(
+                "Use snapshot to discover components, following more for further pages. Use act to receive changes.",
+            )
     }
 }

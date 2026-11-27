@@ -4,7 +4,7 @@ use crate::{
 };
 use rust_use_agent::{
     ipc::{Client, Endpoint, IpcError, list_endpoints},
-    mcp::{McpServer, query_request},
+    mcp::{McpServer, query_request, search_request, snapshot_request},
 };
 use std::{
     error::Error,
@@ -43,19 +43,36 @@ pub(crate) fn run(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
             McpServer::new(Mutex::new(client)).serve_stdio()?;
             return Ok(ExitCode::SUCCESS);
         }
-        Command::Snapshot { verbose } => (
-            if verbose {
-                "snapshot --verbose"
-            } else {
-                "snapshot"
-            }
-            .into(),
-            cursor()?,
-        ),
+        Command::Snapshot {
+            verbose,
+            from,
+            limit,
+        } => (snapshot_request(verbose, from, limit), cursor()?),
         Command::Act { script } => (format!("act {}", script.join(" ")), cursor()?),
         Command::Diff => ("diff".into(), cursor()?),
-        Command::Query { target, text, from } => {
-            (query_request(&target, text.as_deref(), from), None)
+        Command::Query {
+            target,
+            text,
+            kind,
+            search_text,
+            from,
+            limit,
+        } => {
+            let request = if kind.is_some() || search_text.is_some() {
+                search_request(
+                    kind.as_deref(),
+                    search_text.or(target).as_deref(),
+                    from.as_deref().map(str::parse).transpose()?,
+                    limit,
+                )
+            } else {
+                query_request(
+                    target.as_deref().unwrap_or_default(),
+                    text.as_deref(),
+                    from.as_deref().map(str::parse).transpose()?,
+                )
+            };
+            (request, None)
         }
         Command::Raw { payload } => (payload.join(" "), None),
         Command::List => return Ok(ExitCode::SUCCESS),

@@ -1,6 +1,6 @@
 //! Protocol examples and screen-size regression budget.
 use insta::assert_snapshot;
-use rust_use_agent::{UiAgentExt, step};
+use rust_use_agent::{SnapshotOptions, UiAgentExt, step};
 use rust_use_core::{
     ActionError, ActionSpec, Args, Behavior, ChangeSource, Describe, List, Page, ParamSpec,
     Primitive, Query, Ui, Value,
@@ -149,6 +149,23 @@ fn format_examples() {
     @2 board "Chess board" ="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1" turn=b check !move(uci) !undo
     @3 select "Country" =Sweden open ?query
     "#);
+    assert_snapshot!(agent.handle("snapshot --from @2 --limit 1"),@r#"
+    rev 7
+    @2 board "Chess board" ="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1" turn=b check !move(uci) !undo
+    more 1 from=@3
+    "#);
+    assert_snapshot!(agent.handle("snapshot --from @3 --limit 1"),@r#"
+    rev 7
+    @3 select "Country" =Sweden open ?query
+    "#);
+    assert_snapshot!(agent.handle("query --kind select SWE"),@r#"
+    rev 7
+    @3 select "Country" =Sweden open ?query
+    "#);
+    assert_snapshot!(agent.handle("query --text \"CHESS BOARD\""),@r#"
+    rev 7
+    @2 board "Chess board" ="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1" turn=b check !move(uci) !undo
+    "#);
     assert_snapshot!(agent.handle("act \"Chess board\" move e2e4; # another move\n@2 move e2e5"),@r#"
     err 2 @2 move e2e5: illegal move (legal: a2a3 a2a4 b1a3 b1c3 …)
     rev 8
@@ -164,6 +181,91 @@ fn format_examples() {
     assert_eq!(agent.handle("diff"), "rev 8");
     assert_eq!(agent.handle("diff 8"), "rev 8");
     assert!(agent.handle("diff invalid").starts_with("err"));
+}
+
+fn large_screen() -> Ui {
+    let ui = Ui::new();
+    for id in 1..=250 {
+        if id % 2 == 0 {
+            ui.mount(Mute(false));
+        } else {
+            ui.mount(Select);
+        }
+    }
+    ui
+}
+
+#[test]
+fn snapshot_pages() {
+    let agent = large_screen().agent();
+    for (request, first, last, more) in [
+        ("snapshot", 1, 100, Some("more 150 from=@101")),
+        ("snapshot --from @101", 101, 200, Some("more 50 from=@201")),
+        ("snapshot --from @201", 201, 250, None),
+    ] {
+        let reply = agent.handle(request);
+        let mut lines = reply.lines();
+        assert_eq!(lines.next(), Some("rev 250"));
+        for id in first..=last {
+            assert!(
+                lines
+                    .next()
+                    .is_some_and(|s| s.starts_with(&format!("@{id} ")))
+            );
+        }
+        assert_eq!(lines.next(), more);
+        assert_eq!(lines.next(), None);
+    }
+    assert_eq!(agent.snapshot().components.len(), 100);
+    assert_eq!(
+        agent.snapshot().to_json()["more"],
+        serde_json::json!({"remaining":150,"from":101})
+    );
+    assert_eq!(agent.diff_since(0).changed.len(), 250);
+}
+
+#[test]
+fn component_search_pages() {
+    let agent = large_screen().agent();
+    let first = agent.search(Some("select"), None, SnapshotOptions::default());
+    assert_eq!(first.components.len(), 100);
+    assert!(first.components.iter().all(|c| c.name == "select"));
+    let reply = first.to_string();
+    assert!(reply.ends_with("\nmore 25 from=@201"));
+    assert_eq!(agent.handle("query --kind select"), reply);
+    assert_eq!(agent.handle("query --text sWeD"), reply);
+    assert_eq!(agent.handle("query --text SeLEcT"), reply);
+
+    // Start at an id which does not match and count only later matches.
+    let reply = agent.handle("query --kind select sw --from @200 --limit 2");
+    assert_snapshot!(reply,@"
+    rev 250
+    @201 select =Sweden open ?query
+    @203 select =Sweden open ?query
+    more 23 from=@205
+    ");
+    let last = agent.handle("query --text sw --from @201");
+    assert_eq!(last.lines().count(), 26);
+    assert!(last.ends_with("\n@249 select =Sweden open ?query"));
+    assert_eq!(agent.handle("query --kind mute-button Sweden"), "rev 250");
+    assert_eq!(agent.diff().changed.len(), 250);
+}
+
+#[test]
+fn invalid_component_page_args() {
+    let agent = screen().agent();
+    for request in [
+        "snapshot --from",
+        "snapshot --from 1",
+        "snapshot --limit -1",
+        "snapshot --verbose extra",
+        "query --text",
+        "query --kind",
+        "query --kind select \"a\"extra",
+        "query --text S --from @oops",
+    ] {
+        assert!(agent.handle(request).starts_with("err"), "{request}");
+    }
 }
 
 #[test]
@@ -319,6 +421,11 @@ async fn mcp_tools_return_compact_replies() -> Result<(), Box<dyn std::error::Er
         ("snapshot", json!({}), "snapshot"),
         ("act", json!({"script":"Mute toggle"}), "act Mute toggle"),
         ("snapshot", json!({"verbose":true}), "snapshot --verbose"),
+        (
+            "snapshot",
+            json!({"from":"@2","limit":1,"verbose":true}),
+            "snapshot --verbose --from @2 --limit 1",
+        ),
         (
             "query",
             json!({"ref":"Country","text":"sw","from":1}),

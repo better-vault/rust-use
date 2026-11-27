@@ -8,7 +8,8 @@ mod types;
 
 pub use agent::{Agent, UiAgentExt};
 pub use types::{
-    ActError, ActOutcome, Diff, QueryOutcome, Script, Snapshot, SnapshotOptions, Step, step,
+    ActError, ActOutcome, Diff, QueryOutcome, Script, Snapshot, SnapshotMore, SnapshotOptions,
+    Step, step,
 };
 
 #[cfg(feature = "ipc")]

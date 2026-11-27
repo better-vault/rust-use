@@ -129,11 +129,24 @@ agent.act("Mute toggle")?;
 Behaviors embed into a component with `#[behavior]`. Their state and actions merge into the
 component's own.
 
-- **Input**: `press`, `toggle`, `value`
-- **Collections**: `selection`, `list` (searchable through `query`)
-- **Focus and keys**: `roving_focus` (lists and 2-D grids), `typeahead`
-- **Overlays**: `popup`
-- **Pointer**: `drag_drop`
+- **Input**: `Press`, `Toggle`, `Field`
+- **Collections**: `Selection`, `List` (searchable through `query`)
+- **Focus and keys**: `RovingFocus` (lists and 2-D grids), `Typeahead`
+- **Overlays**: `Popup`
+- **Pointer**: `DragDrop`
+
+### Coming next
+
+| Release | Behaviors | Also |
+| --- | --- | --- |
+| **0.2** | `Reorder`, `Tree`, `Range`, `Combobox`, `Tabs` | a Tauri adapter, atomic `act` |
+| **0.3** | `TextInput`, `Dialog`, `Menu`, `Viewport`, `Resize`, `Toast` | `observe`: changes pushed to agents |
+| **Later** | `Canvas`, `Calendar`, `Form`, `History`, `Shortcuts`, `Clipboard` | more adapters, hardware, 1.0 |
+
+Every one is operated by an agent in a single direct action, such as `reorder 3 0` or `expand "src"`.
+See **[ROADMAP.md](ROADMAP.md)** for what each will do, and
+[request a behavior](https://github.com/better-vault/rust-use/issues/new?template=feature_request.yml)
+to change the order.
 
 ## Agents
 

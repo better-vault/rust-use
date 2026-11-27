@@ -62,6 +62,16 @@ jobs:
       - run: cargo doc --workspace --no-deps --all-features
         env:
           RUSTDOCFLAGS: -Dwarnings
+      # cargo publish rejects a crate whose build script writes into its source directory, which
+      # happened in the 0.2.0 release. A build that leaves new or changed files fails here instead.
+      - name: Build scripts leave the tree clean
+        shell: bash
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::The build changed tracked files or left untracked ones. Commit generated files or write them to OUT_DIR."
+            git status --porcelain
+            exit 1
+          fi
 
   msrv:
     runs-on: ubuntu-latest

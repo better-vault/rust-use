@@ -73,15 +73,15 @@ use rust_use::prelude::*;
 /// Tabs along the top of a settings window.
 #[derive(Primitive)]
 #[primitive(no_actions)]
-struct Tabs {
+struct Settings {
     #[behavior]
-    selected: Selection<String>,
+    tabs: Tabs,
 }
 
 let ui = Ui::new();
-let tabs = ui.mount(Tabs { selected: Selection::new(SelectionMode::Single) }).label("Settings");
-ui.agent().act("Settings select general")?;
-assert_eq!(tabs.read(|t| t.selected.selected().to_vec()), Some(vec!["general".to_owned()]));
+let settings = ui.mount(Settings { tabs: Tabs::new(["general", "privacy"]) }).label("Settings");
+ui.agent().act("Settings select privacy")?;
+assert_eq!(settings.read(|s| s.tabs.is_visible("privacy")), Some(true));
 # Ok::<(), rust_use::agent::ActError>(())
 ```
 "#
@@ -97,9 +97,9 @@ assert_eq!(tabs.read(|t| t.selected.selected().to_vec()), Some(vec!["general".to
 pub use rust_use_core::{
     ActionError, ActionRequest, ActionSpec, Args, Behavior, ChangeEvent, ChangeKind, ChangeSet,
     ChangeSource, ComponentId, ComponentInfo, Decision, Describe, DragDrop, Field, Handle,
-    InvokeError, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive, Query, Ref,
-    ResolveError, RovingFocus, Selection, SelectionMode, Subscription, Toggle, Transfer, Tree,
-    TreeRow, Typeahead, Ui, Value,
+    InvokeError, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive, Query, Range,
+    Ref, ResolveError, RovingFocus, Selection, SelectionMode, Subscription, Tabs, Toggle, Transfer,
+    Tree, TreeRow, Typeahead, Ui, Value,
 };
 
 #[cfg(feature = "agent")]
@@ -157,8 +157,8 @@ pub mod prelude {
     pub use crate::{
         ActionError, ActionSpec, Args, Behavior, ChangeSource, ComponentId, Decision, Describe,
         DragDrop, Field, Handle, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive,
-        Query, Ref, RovingFocus, Selection, SelectionMode, Toggle, Transfer, Tree, TreeRow,
-        Typeahead, Ui, Value,
+        Query, Range, Ref, RovingFocus, Selection, SelectionMode, Tabs, Toggle, Transfer, Tree,
+        TreeRow, Typeahead, Ui, Value,
     };
     #[cfg(feature = "gpui")]
     pub use crate::{HandleExt, UiBinding, UiExt};

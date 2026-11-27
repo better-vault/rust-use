@@ -20,8 +20,8 @@ mod value;
 pub use action::{ActionRequest, ActionSpec, ChangeSource, Decision, ParamSpec};
 pub use behavior::{Behavior, Page, Primitive, Query};
 pub use behaviors::{
-    DragDrop, Field, Key, List, Orientation, Popup, Press, RovingFocus, Selection, SelectionMode,
-    Toggle, Transfer, Tree, TreeRow, Typeahead,
+    DragDrop, Field, Key, List, Orientation, Popup, Press, Range, RovingFocus, Selection,
+    SelectionMode, Tabs, Toggle, Transfer, Tree, TreeRow, Typeahead,
 };
 pub use describe::Describe;
 pub use error::{ActionError, InvokeError, ResolveError};

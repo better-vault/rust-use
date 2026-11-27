@@ -6,9 +6,13 @@ mod popup;
 
 mod press;
 
+mod range;
+
 mod roving_focus;
 
 mod selection;
+
+mod tabs;
 
 mod toggle;
 
@@ -24,8 +28,10 @@ pub use drag_drop::DragDrop;
 pub use list::List;
 pub use popup::Popup;
 pub use press::Press;
+pub use range::Range;
 pub use roving_focus::{Key, Orientation, RovingFocus};
 pub use selection::{Selection, SelectionMode};
+pub use tabs::Tabs;
 pub use toggle::Toggle;
 pub use transfer::Transfer;
 pub use tree::{Tree, TreeRow};
@@ -59,6 +65,15 @@ fn dispatch(
     args: &Args,
     apply: impl FnOnce() -> Result<(), ActionError>,
 ) -> Option<Result<Value, ActionError>> {
+    dispatch_value(specs, name, args, || apply().map(|()| Value::Null))
+}
+
+fn dispatch_value(
+    specs: &[ActionSpec],
+    name: &str,
+    args: &Args,
+    apply: impl FnOnce() -> Result<Value, ActionError>,
+) -> Option<Result<Value, ActionError>> {
     let spec = specs.iter().find(|spec| spec.name == name)?;
     Some(if args.len() > spec.params.len() {
         Err(ActionError::InvalidArg {
@@ -66,6 +81,6 @@ fn dispatch(
             reason: format!("expected {}, got {}", spec.params.len(), args.len()),
         })
     } else {
-        apply().map(|()| Value::Null)
+        apply()
     })
 }

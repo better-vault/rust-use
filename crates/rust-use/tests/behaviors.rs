@@ -111,6 +111,153 @@ fn selection() -> Result<(), InvokeError> {
     multi.check(&Describe::new(), &["select", "deselect"])
 }
 #[test]
+#[allow(
+    clippy::float_cmp,
+    reason = "The expected values are exactly representable."
+)]
+fn range() {
+    let mut range = Range::new(0.0, 100.0).step(5.0);
+    assert_eq!(range.bounds(), (0.0, 0.0));
+    assert_eq!(range.set(12.0), 10.0);
+    assert_eq!(range.set(13.0), 15.0);
+    range.increment();
+    assert_eq!(range.value(), 20.0);
+    range.decrement();
+    assert_eq!(range.value(), 15.0);
+    assert_eq!(range.set(-1.0), 0.0);
+    assert_eq!(range.set(101.0), 100.0);
+    assert_eq!(range.set(f64::NAN), 100.0);
+
+    let mut offset = Range::new(2.0, 14.0).step(5.0);
+    assert_eq!(offset.set(9.0), 7.0);
+    assert_eq!(offset.set(15.0), 14.0);
+
+    let mut continuous = Range::new(0.0, 1.0).step(0.0);
+    assert_eq!(continuous.set(0.375), 0.375);
+    let mut describe = Describe::new();
+    continuous.describe(&mut describe);
+    assert_eq!(
+        &describe,
+        Describe::new()
+            .value(0.375)
+            .attr("min", 0)
+            .attr("max", 1)
+            .attr("step", 0)
+    );
+}
+
+#[test]
+#[allow(
+    clippy::float_cmp,
+    reason = "The expected values are exactly representable."
+)]
+fn range_span() -> Result<(), ActionError> {
+    let mut range = Range::new(0.0, 100.0).step(5.0).span(79.0, 21.0);
+    assert_eq!(range.bounds(), (20.0, 80.0));
+    assert_eq!(range.set_span(21.0, 19.0)?, (20.0, 20.0));
+    assert!(matches!(
+        range.set_span(25.0, 15.0),
+        Err(ActionError::Rejected(_))
+    ));
+    assert!(matches!(
+        range.set_span(10.0, f64::NAN),
+        Err(ActionError::InvalidArg { name: "end", .. })
+    ));
+    assert_eq!(range.bounds(), (20.0, 20.0));
+    assert_eq!(range.set(30.0), 20.0);
+    range.decrement();
+    assert_eq!(range.bounds(), (15.0, 20.0));
+    Ok(())
+}
+
+#[cfg(feature = "agent")]
+#[test]
+fn range_agent() -> Result<(), Box<dyn std::error::Error>> {
+    let slider = Mounted::new(Range::new(0.0, 100.0));
+    let agent = slider.ui.agent();
+    agent.act("@1 set 40")?;
+    assert_eq!(
+        agent.snapshot().to_string(),
+        "rev 2\n@1 control =40 min=0 max=100 !set(value:float)"
+    );
+    assert_eq!(
+        slider.act("set_span", (20, 80)),
+        Err(ActionError::Disabled("set_span".into()).into())
+    );
+    assert!(matches!(
+        slider.act("set", (f64::NAN,)),
+        Err(InvokeError::Action(ActionError::InvalidArg {
+            name: "value",
+            ..
+        }))
+    ));
+    assert!(matches!(
+        agent.act("@1 set NaN"),
+        Err(rust_use::ActError::Step {
+            source: InvokeError::Action(ActionError::InvalidArg { name: "value", .. }),
+            ..
+        })
+    ));
+    let reply = agent.act("@1 set 150")?;
+    assert_eq!(reply.values, vec![(1, json!(100))]);
+    assert!(reply.to_string().starts_with("ok\n=> 1 100\n"));
+
+    let slider = Mounted::new(Range::new(0.0, 100.0).step(5.0).span(0.0, 100.0));
+    let agent = slider.ui.agent();
+    agent.act("@1 set_span 21 81")?;
+    assert_eq!(
+        agent.snapshot().to_string(),
+        concat!(
+            "rev 2\n@1 control =[20,80] min=0 max=100 step=5 ",
+            "!set(value:float) !set_span(start:float,end:float)"
+        )
+    );
+    Ok(())
+}
+
+#[test]
+fn tabs() -> Result<(), ActionError> {
+    let mut tabs = Tabs::new(["a", "b", "c"]);
+    assert_eq!(tabs.tabs(), &["a", "b", "c"]);
+    assert_eq!(tabs.selected(), "a");
+    tabs.prev();
+    assert_eq!(tabs.selected(), "c");
+    tabs.next();
+    assert_eq!(tabs.selected(), "a");
+    tabs.select("b")?;
+    assert!(tabs.is_visible("b"));
+    assert!(!tabs.is_visible("a"));
+
+    let mut empty = Tabs::new([] as [&str; 0]);
+    empty.next();
+    empty.prev();
+    assert_eq!(empty.selected(), "");
+    assert!(!empty.is_visible(""));
+    Ok(())
+}
+
+#[cfg(feature = "agent")]
+#[test]
+fn tabs_agent() -> Result<(), Box<dyn std::error::Error>> {
+    let settings = Mounted::new(Tabs::new(["a", "b", "c"]));
+    let agent = settings.ui.agent();
+    agent.act("@1 select b")?;
+    assert_eq!(
+        agent.snapshot().to_string(),
+        "rev 2\n@1 control =b tabs=[a,b,c] !select(tab)"
+    );
+    assert_eq!(
+        agent.act("@1 select d").err().map(|err| err.to_string()),
+        Some("step 1: unknown tab `d` (available: [\"a\", \"b\", \"c\"])".into())
+    );
+    assert_eq!(
+        settings.control.read(|c| c.input.is_visible("b")),
+        Some(true)
+    );
+    Ok(())
+}
+
+#[test]
 fn list() -> Result<(), InvokeError> {
     let list = Mounted::new(List::new(vec!["Lemon", "Lime", "Pear"]));
     list.act("move", (1, 0))?;

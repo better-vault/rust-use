@@ -197,6 +197,53 @@ fn roving_focus() -> Result<(), InvokeError> {
     focus.act("focus", (1,))?;
     focus.check(Describe::new().attr("focus", 1), &["focus"])
 }
+
+#[cfg(feature = "agent")]
+#[test]
+fn file_tree() -> Result<(), Box<dyn std::error::Error>> {
+    #[derive(Default)]
+    struct FileData;
+
+    #[derive(Primitive)]
+    #[primitive(no_actions)]
+    struct FileTree {
+        #[behavior]
+        tree: Tree<FileData>,
+    }
+
+    let ui = Ui::new();
+    let files = ui
+        .mount(FileTree {
+            tree: Tree::from_paths(["src/agent/format.rs", "src/lib.rs", "README.md"]),
+        })
+        .label("files");
+    let agent = ui.agent();
+    assert_eq!(
+        agent.handle("query files format"),
+        "src/agent/format.rs\ntotal 1"
+    );
+    assert_eq!(files.read(|f| f.tree.is_expanded("src")), Some(false));
+
+    agent.act("files select src/agent/format.rs")?;
+    assert_eq!(
+        agent.snapshot().to_string(),
+        concat!(
+            "rev 3\n@1 file-tree \"files\" sel=src/agent/format.rs open=2 ",
+            "!expand(path) !collapse(path) !select(path) !move(path,parent,at:int?) ?query"
+        )
+    );
+    assert_eq!(
+        files.read(|f| f.tree.selected().map(str::to_owned)),
+        Some(Some("src/agent/format.rs".into()))
+    );
+    agent.act(r#"files move src/agent "" 0"#)?;
+    assert_eq!(
+        files.read(|f| f.tree.selected().map(str::to_owned)),
+        Some(Some("agent/format.rs".into()))
+    );
+    Ok(())
+}
+
 #[test]
 fn typeahead() -> Result<(), InvokeError> {
     let search = Mounted::new(Typeahead::default());

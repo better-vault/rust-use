@@ -98,8 +98,8 @@ pub use rust_use_core::{
     ActionError, ActionRequest, ActionSpec, Args, Behavior, ChangeEvent, ChangeKind, ChangeSet,
     ChangeSource, ComponentId, ComponentInfo, Decision, Describe, DragDrop, Field, Handle,
     InvokeError, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive, Query, Ref,
-    ResolveError, RovingFocus, Selection, SelectionMode, Subscription, Toggle, Transfer, Typeahead,
-    Ui, Value,
+    ResolveError, RovingFocus, Selection, SelectionMode, Subscription, Toggle, Transfer, Tree,
+    TreeRow, Typeahead, Ui, Value,
 };
 
 #[cfg(feature = "agent")]
@@ -157,7 +157,8 @@ pub mod prelude {
     pub use crate::{
         ActionError, ActionSpec, Args, Behavior, ChangeSource, ComponentId, Decision, Describe,
         DragDrop, Field, Handle, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive,
-        Query, Ref, RovingFocus, Selection, SelectionMode, Toggle, Transfer, Typeahead, Ui, Value,
+        Query, Ref, RovingFocus, Selection, SelectionMode, Toggle, Transfer, Tree, TreeRow,
+        Typeahead, Ui, Value,
     };
     #[cfg(feature = "gpui")]
     pub use crate::{HandleExt, UiBinding, UiExt};

@@ -14,6 +14,8 @@ mod toggle;
 
 mod transfer;
 
+mod tree;
+
 mod typeahead;
 
 mod value;
@@ -26,6 +28,7 @@ pub use roving_focus::{Key, Orientation, RovingFocus};
 pub use selection::{Selection, SelectionMode};
 pub use toggle::Toggle;
 pub use transfer::Transfer;
+pub use tree::{Tree, TreeRow};
 pub use typeahead::Typeahead;
 pub use value::Field;
 

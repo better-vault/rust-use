@@ -133,6 +133,63 @@ fn list() -> Result<(), InvokeError> {
     );
     Ok(())
 }
+
+#[test]
+fn transfer() -> Result<(), Box<dyn std::error::Error>> {
+    #[derive(Primitive)]
+    #[primitive(no_actions)]
+    struct Kanban {
+        #[behavior]
+        board: Transfer<String>,
+    }
+
+    let ui = Ui::new();
+    let kanban = ui
+        .mount(Kanban {
+            board: Transfer::new()
+                .with_list("todo", vec!["Fix login".into(), "Write tests".into()])
+                .with_list("done", vec!["Add lint".into()]),
+        })
+        .label("board");
+    assert!(matches!(
+        ui.invoke("board", "move", ("Fix login", "done", -1), ChangeSource::Agent),
+        Err(InvokeError::Action(ActionError::Rejected(reason))) if reason.contains("out of range")
+    ));
+    assert!(matches!(
+        ui.invoke("board", "move", ("Missing item", "done"), ChangeSource::Agent),
+        Err(InvokeError::Action(ActionError::Rejected(reason))) if reason.contains("item not found")
+    ));
+    ui.invoke(
+        "board",
+        "move",
+        ("Write tests", "done", 0),
+        ChangeSource::Agent,
+    )?;
+    assert_eq!(
+        kanban.read(|k| k.board.list("done").map(<[String]>::to_vec)),
+        Some(Some(vec!["Write tests".into(), "Add lint".into()]))
+    );
+
+    #[cfg(feature = "agent")]
+    {
+        let agent = ui.agent();
+        agent.act(r#"board move "Fix login" done"#)?;
+        assert_eq!(
+            agent.snapshot().to_string(),
+            "rev 4\n@1 kanban \"board\" todo=0 done=3 !move(item:any,to,at:int?) ?query"
+        );
+        assert_eq!(
+            kanban.read(|k| k.board.list("done").map(<[String]>::to_vec)),
+            Some(Some(vec![
+                "Write tests".into(),
+                "Add lint".into(),
+                "Fix login".into()
+            ]))
+        );
+    }
+    Ok(())
+}
+
 #[test]
 fn roving_focus() -> Result<(), InvokeError> {
     let focus = Mounted::new(RovingFocus::new(Orientation::Horizontal, 2));

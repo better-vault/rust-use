@@ -9,42 +9,19 @@ Every new behavior has to clear one bar: an agent operates it with **one direct 
 (`reorder 3 0`, `expand "src"`, `set 40`), never a sequence of keys or pointer moves, and its
 snapshot line stays short.
 
-## Shipped in 0.1
+## Shipped
 
-`Press` · `Toggle` · `Field` · `Selection` · `List` · `RovingFocus` (lists and 2-D grids) ·
+**0.1:** `Press` · `Toggle` · `Field` · `Selection` · `List` · `RovingFocus` (lists and 2-D grids) ·
 `Typeahead` · `Popup` · `DragDrop` · the agent bridge (`snapshot`, `diff`, `act`, `query`,
 `allow`) · IPC and the `rust-use` CLI · the MCP shim · the GPUI adapter
 
-## 0.2: collections, safety and Tauri
+**0.2:** `Transfer` (items between named lists; reordering within one list is `List`'s `move`) ·
+`Tree` (addressed by path) · `Range` · `Tabs` · `Combobox` · agent safety (`#[agent(secret)]`,
+hidden components, `#[action(confirm)]` with `Approvals`) · atomic `act` · snapshots capped at 100
+components with paging, and component search · `rust-use-tauri` · faster snapshots for large lists ·
+session ids so the CLI survives app restarts
 
-| Behavior | What an agent can do | Typical components |
-| --- | --- | --- |
-| `Reorder` | `move <from> <to>` in one step, validated; also between two lists (`Transfer`) | sortable lists, kanban columns, playlists |
-| `Tree` | `expand`, `collapse`, `select` by path; `query` into closed branches; reorder within the tree | file trees, outlines, nested menus |
-| `Range` | `set <value>` within bounds and steps; two thumbs for a span | sliders, volume, price filters |
-| `Combobox` | `query` the options, then `pick`; free text where allowed | search pickers, country fields, tag inputs |
-| `Tabs` | `select` a tab; focus and panel visibility follow | settings panes, editors |
-
-**Agent safety.** What an agent must not see, and what it must not do alone:
-
-- `#[agent(secret)]` shows a field as `[redacted]` in every snapshot and diff. Password-like
-  fields are secret by default.
-- `#[agent(hidden)]` and `Handle::hide_from_agents()` leave a component out of `snapshot` and
-  `query` entirely.
-- `#[action(confirm = "Delete the project")]` marks an action that needs a person. Without an
-  `allow` hook that asks someone, the step fails with "needs a person".
-- **Async `allow`.** The hook can wait for a person's answer, with a timeout, and the agent's `act`
-  waits with it.
-- **Busy and error state.** Snapshot lines carry `pending` while an async action runs and `error`
-  when the last one failed, so an agent doesn't have to guess.
-
-**`rust-use-tauri`.** An adapter for [Tauri](https://v2.tauri.app) v2. A plugin manages the `Ui` as
-app state, exposes `snapshot`, `act` and `query` as Tauri commands, and emits a change event so the
-webview re-renders. Agents reach a Tauri app over the same IPC and MCP paths as a GPUI app.
-
-**Atomic `act`.** All steps apply or none do, opt-in per script.
-
-## 0.3: text, overlays, history and big data
+## 0.3: text, overlays, history and big data (next)
 
 | Behavior | What an agent can do | Typical components |
 | --- | --- | --- |
@@ -63,6 +40,9 @@ then committed or reverted.
 **Smarter refs.** Reach a component inside a closed tab, accordion or page, which the bridge opens
 on the way. Address one by place (`"Settings > Volume"`). Match labels whole-word, ignoring case
 and accents.
+
+**Busy and error state.** Snapshot lines carry `pending` while an async action runs and `error`
+when the last one failed, so an agent doesn't have to guess. (Planned for 0.2, moved here.)
 
 **`observe`.** Agents subscribe to changes and receive diffs as they happen, instead of polling
 `diff`. Each change says where it came from: keyboard, pointer, program or agent.

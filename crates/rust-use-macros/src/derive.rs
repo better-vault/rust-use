@@ -91,7 +91,12 @@ impl<'a> Description<'a> {
         }
         let span = id.span();
         let value = if secret {
-            quote!("[redacted]")
+            // Touch the field so a secret that is only shown to agents doesn't warn as never read.
+            quote_spanned!(span=> {
+                #[allow(clippy::used_underscore_binding)]
+                let _ = &self.#id;
+                "[redacted]"
+            })
         } else {
             quote_spanned!(span=> &self.#id)
         };

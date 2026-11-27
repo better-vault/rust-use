@@ -42,7 +42,9 @@ has no UI dependency at all.
 
 <p align="center">
   <sub>Claude Code plays the same game in the same app, started at the same moment. Left: generic UI
-  automation over MCP. Right: rust-use over MCP. Real time, not sped up.
+  automation over MCP. Right: rust-use over MCP. Real time, not sped up. Knowing the game in
+  advance, the rust-use agent read the screen once and played it in three batched <code>act</code>
+  calls; one call per move, as in a game it decides as it goes, is still 43× leaner on the wire.
   <a href=".github/assets/race.mp4">Full-quality video</a> · <a href="#benchmark">numbers</a></sub>
 </p>
 

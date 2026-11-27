@@ -28,7 +28,8 @@ pub use behaviors::{
 pub use describe::Describe;
 pub use error::{ActionError, InvokeError, ResolveError};
 pub use ui::{
-    ChangeEvent, ChangeKind, ChangeSet, ComponentId, ComponentInfo, Handle, Ref, Subscription, Ui,
+    ChangeEvent, ChangeKind, ChangeSet, ComponentId, ComponentInfo, Handle, Ref, Subscription, Tx,
+    Ui,
 };
 pub use value::{Args, Value};
 

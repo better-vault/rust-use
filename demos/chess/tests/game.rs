@@ -10,6 +10,22 @@ use std::{
 type TestResult = Result<(), Box<dyn Error>>;
 
 #[test]
+fn atomic_moves_restore_the_start_position() {
+    let app = ChessApp::new();
+    let agent = app.ui.agent();
+    let start = agent.snapshot().to_string();
+    let reply = agent.handle("act atomic; board move e2e4; board move e2e5");
+    assert!(reply.starts_with("err 2 board move e2e5: illegal move"));
+    assert_eq!(reply.lines().nth(1), Some("rolled back"));
+    assert_eq!(reply.lines().nth(3), start.lines().nth(1));
+    assert_eq!(
+        app.board.read(|board| board.fen().to_owned()),
+        Some(Board::default().fen().to_owned())
+    );
+    assert_eq!(app.board.read(Board::can_undo), Some(false));
+}
+
+#[test]
 fn starting_snapshot_and_undo() -> TestResult {
     let app = ChessApp::new();
     let agent = app.ui.agent();

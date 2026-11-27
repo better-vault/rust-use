@@ -119,6 +119,8 @@ pub enum ChangeKind {
     Unmounted,
     /// A named action succeeded.
     Action(String),
+    /// An atomic batch restored the primitive's checkpoint.
+    Restored,
     /// App code directly updated the primitive.
     Updated,
     /// The label was set.
@@ -145,6 +147,8 @@ pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 trait Erased: Behavior {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
+    fn checkpoint(&self) -> Option<Box<dyn Any + Send>>;
+    fn restore(&mut self, saved: Box<dyn Any + Send>);
 }
 
 impl<P: Primitive> Erased for P {
@@ -155,9 +159,22 @@ impl<P: Primitive> Erased for P {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
+
+    fn checkpoint(&self) -> Option<Box<dyn Any + Send>> {
+        Primitive::checkpoint(self)
+    }
+
+    fn restore(&mut self, saved: Box<dyn Any + Send>) {
+        Primitive::restore(self, saved);
+    }
 }
 
-type Cell = Arc<Mutex<Box<dyn Erased>>>;
+struct CellState {
+    primitive: Box<dyn Erased>,
+    reserved: bool,
+}
+
+type Cell = Arc<Mutex<CellState>>;
 
 struct Entry {
     hidden: bool,
@@ -321,7 +338,10 @@ impl Ui {
                 hidden_since: 0,
                 label: None,
                 revision: 0,
-                cell: Arc::new(Mutex::new(Box::new(primitive))),
+                cell: Arc::new(Mutex::new(CellState {
+                    primitive: Box::new(primitive),
+                    reserved: false,
+                })),
             },
         );
         let event = state.event(id, ChangeKind::Mounted, ChangeSource::Program);
@@ -399,8 +419,8 @@ impl Ui {
         let (name, label, revision) = (e.name, e.label.clone(), e.revision);
         drop(state);
         let mut describe = Describe::new();
-        guard.describe(&mut describe);
-        let actions = enabled(&**guard);
+        guard.primitive.describe(&mut describe);
+        let actions = enabled(&*guard.primitive);
         Ok(ComponentInfo {
             hidden,
             id,
@@ -409,7 +429,7 @@ impl Ui {
             revision,
             describe,
             actions,
-            queryable: guard.queryable(),
+            queryable: guard.primitive.queryable(),
         })
     }
 
@@ -508,9 +528,22 @@ impl Ui {
         args: impl Into<Args>,
         source: ChangeSource,
     ) -> Result<Value, InvokeError> {
-        let args = args.into();
-        let (id, cell) = self.target(r.into(), source)?;
+        self.invoke_with(r.into(), action, &args.into(), source, None)
+    }
+
+    fn invoke_with(
+        &self,
+        r: Ref,
+        action: &str,
+        args: &Args,
+        source: ChangeSource,
+        tx: Option<&mut Tx<'_>>,
+    ) -> Result<Value, InvokeError> {
+        let (id, cell) = self.target(r, source)?;
         let mut guard = lock(&cell);
+        if tx.is_none() && guard.reserved {
+            return Err(InvokeError::TransactionActive(id));
+        }
         let state = lock(&self.inner.state);
         let entry = state
             .entries
@@ -519,7 +552,7 @@ impl Ui {
             .ok_or_else(|| missing(id))?;
         let (name, label) = (entry.name, entry.label.clone());
         drop(state);
-        let confirm = check_action(&**guard, name, action)?;
+        let confirm = check_action(&*guard.primitive, name, action)?;
         let hooks = lock(&self.inner.interceptors).clone();
         if !hooks.is_empty() || (source == ChangeSource::Agent && confirm.is_some()) {
             drop(guard);
@@ -528,7 +561,7 @@ impl Ui {
                 component: name,
                 label: label.as_deref(),
                 action,
-                args: &args,
+                args,
                 source,
                 confirm,
             };
@@ -548,7 +581,10 @@ impl Ui {
             }
             guard = lock(&cell);
             self.resolve_for(id, source)?;
-            let updated = check_action(&**guard, name, action)?;
+            if tx.is_none() && guard.reserved {
+                return Err(InvokeError::TransactionActive(id));
+            }
+            let updated = check_action(&*guard.primitive, name, action)?;
             if source == ChangeSource::Agent
                 && updated != confirm
                 && let Some(text) = updated
@@ -556,13 +592,54 @@ impl Ui {
                 return Err(InvokeError::Denied(format!("needs a person: {text}")));
             }
         }
+        if let Some(tx) = tx {
+            tx.touch(id);
+        }
         let result = guard
-            .invoke(action, &args)
-            .ok_or_else(|| unknown(&**guard, name, action))??;
+            .primitive
+            .invoke(action, args)
+            .ok_or_else(|| unknown(&*guard.primitive, name, action))??;
         let event = lock(&self.inner.state).event(id, ChangeKind::Action(action.into()), source);
         drop(guard);
         self.notify(&event);
         Ok(result)
+    }
+
+    /// Run a batch of checkpointed actions from the given source.
+    ///
+    /// Actions publish their usual change events as they run. If the closure returns
+    /// an error, touched primitives are restored in reverse order of first invocation.
+    /// Each restoration advances the revision and publishes one [`ChangeKind::Restored`]
+    /// event after the state has been restored.
+    ///
+    /// Prepared primitives remain readable. Other invocations and direct value updates
+    /// on them are rejected until the batch ends, including during approval waits.
+    /// Registry operations such as relabeling, hiding, and unmounting still apply.
+    ///
+    /// # Errors
+    /// Returns the error from the closure after restoring the touched primitives.
+    pub fn transaction<T, E>(
+        &self,
+        source: ChangeSource,
+        f: impl FnOnce(&mut Tx<'_>) -> Result<T, E>,
+    ) -> Result<T, E> {
+        let mut tx = Tx {
+            ui: self,
+            source,
+            checkpoints: BTreeMap::new(),
+            touched: Vec::new(),
+        };
+        let result = f(&mut tx);
+        let events = if result.is_err() {
+            tx.restore()
+        } else {
+            Vec::new()
+        };
+        drop(tx);
+        for event in events {
+            self.notify(&event);
+        }
+        result
     }
 
     /// Query a component's optional paginated list.
@@ -586,7 +663,7 @@ impl Ui {
         let (id, cell) = self.target(r.into(), source)?;
         let guard = lock(&cell);
         self.resolve_for(id, source)?;
-        Ok(guard.query(query))
+        Ok(guard.primitive.query(query))
     }
 
     /// Install a queue for agent actions requiring a person. Replacing or dropping
@@ -628,6 +705,109 @@ impl Ui {
         let hooks = lock(&self.inner.subscribers).clone();
         for hook in hooks {
             hook(event);
+        }
+    }
+}
+
+struct Checkpoint {
+    cell: Cell,
+    saved: Option<Box<dyn Any + Send>>,
+    touched: bool,
+}
+
+/// Action dispatch within a [`Ui::transaction`].
+pub struct Tx<'a> {
+    ui: &'a Ui,
+    source: ChangeSource,
+    checkpoints: BTreeMap<ComponentId, Checkpoint>,
+    touched: Vec<ComponentId>,
+}
+
+impl Tx<'_> {
+    /// Resolve a target and save its checkpoint if this batch has yet to prepare it.
+    ///
+    /// Call this for all targets before invoking any steps to validate the whole batch.
+    /// Use the returned ids for dispatch to keep targets stable across relabeling.
+    ///
+    /// # Errors
+    /// Returns an error if the target cannot be resolved, reserved, or checkpointed.
+    pub fn prepare(&mut self, target: impl Into<Ref>) -> Result<ComponentId, InvokeError> {
+        let (id, cell) = self.ui.target(target.into(), self.source)?;
+        if self.checkpoints.contains_key(&id) {
+            return Ok(id);
+        }
+        let mut guard = lock(&cell);
+        let name = lock(&self.ui.inner.state)
+            .entries
+            .get(&id)
+            .filter(|entry| entry.accessible(self.source))
+            .ok_or_else(|| missing(id))?
+            .name;
+        if guard.reserved {
+            return Err(InvokeError::TransactionActive(id));
+        }
+        let saved = guard
+            .primitive
+            .checkpoint()
+            .ok_or(InvokeError::NotCheckpointable {
+                id,
+                component: name,
+            })?;
+        guard.reserved = true;
+        drop(guard);
+        self.checkpoints.insert(
+            id,
+            Checkpoint {
+                cell,
+                saved: Some(saved),
+                touched: false,
+            },
+        );
+        Ok(id)
+    }
+
+    /// Prepare the target if needed and invoke an action with the registry's usual checks.
+    ///
+    /// # Errors
+    /// Returns errors from preparation, action checks, approvals, or the action itself.
+    pub fn invoke(
+        &mut self,
+        target: impl Into<Ref>,
+        action: &str,
+        args: impl Into<Args>,
+    ) -> Result<Value, InvokeError> {
+        let id = self.prepare(target)?;
+        self.ui
+            .invoke_with(id.into(), action, &args.into(), self.source, Some(self))
+    }
+
+    fn touch(&mut self, id: ComponentId) {
+        if let Some(checkpoint) = self.checkpoints.get_mut(&id)
+            && !checkpoint.touched
+        {
+            checkpoint.touched = true;
+            self.touched.push(id);
+        }
+    }
+
+    fn restore(&mut self) -> Vec<ChangeEvent> {
+        self.touched
+            .iter()
+            .rev()
+            .filter_map(|id| {
+                let checkpoint = self.checkpoints.get_mut(id)?;
+                let mut guard = lock(&checkpoint.cell);
+                guard.primitive.restore(checkpoint.saved.take()?);
+                Some(lock(&self.ui.inner.state).event(*id, ChangeKind::Restored, self.source))
+            })
+            .collect()
+    }
+}
+
+impl Drop for Tx<'_> {
+    fn drop(&mut self) {
+        for checkpoint in self.checkpoints.values() {
+            lock(&checkpoint.cell).reserved = false;
         }
     }
 }
@@ -757,15 +937,19 @@ impl<P: Primitive> Handle<P> {
         let (_, cell) = self.ui.target(self.id.into(), ChangeSource::Program).ok()?;
         let guard = lock(&cell);
         self.ui.resolve(self.id).ok()?;
-        Some(f(guard.as_any().downcast_ref()?))
+        Some(f(guard.primitive.as_any().downcast_ref()?))
     }
 
     /// Mutate directly under the component lock and report an update.
+    /// Returns `None` if unmounted or reserved by an atomic batch.
     pub fn update<R>(&self, source: ChangeSource, f: impl FnOnce(&mut P) -> R) -> Option<R> {
         let (_, cell) = self.ui.target(self.id.into(), ChangeSource::Program).ok()?;
         let mut guard = lock(&cell);
+        if guard.reserved {
+            return None;
+        }
         self.ui.resolve(self.id).ok()?;
-        let result = f(guard.as_any_mut().downcast_mut()?);
+        let result = f(guard.primitive.as_any_mut().downcast_mut()?);
         let event = lock(&self.ui.inner.state).event(self.id, ChangeKind::Updated, source);
         drop(guard);
         self.ui.notify(&event);

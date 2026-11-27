@@ -60,8 +60,8 @@ pub enum ClickOutcome {
 }
 
 /// A chess position, its reversible move history and the human player's selection.
-#[derive(Primitive)]
-#[primitive(name = "board")]
+#[derive(Clone, Primitive)]
+#[primitive(name = "board", checkpoint)]
 pub struct Board {
     #[agent(value)]
     fen: String,

@@ -2,7 +2,8 @@ use heck::ToKebabCase;
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::{
-    Data, DeriveInput, Error, Field, Fields, Ident, LitStr, Path, ext::IdentExt, spanned::Spanned,
+    Data, DeriveInput, Error, Field, Fields, Ident, LitStr, Path, ext::IdentExt,
+    parse_quote_spanned, spanned::Spanned,
 };
 
 #[derive(Default)]
@@ -11,6 +12,7 @@ struct Options {
     root: Option<Path>,
     no_actions: bool,
     hidden: bool,
+    checkpoint: Option<proc_macro2::Span>,
 }
 
 impl Options {
@@ -30,6 +32,8 @@ impl Options {
                     options.hidden = true;
                 } else if meta.path.is_ident("no_actions") {
                     options.no_actions = true;
+                } else if meta.path.is_ident("checkpoint") {
+                    options.checkpoint = Some(meta.path.span());
                 } else {
                     return Err(meta.error("unknown primitive option"));
                 }
@@ -154,6 +158,25 @@ pub(super) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
     let hidden = opts.hidden;
     let own = quote!(#c::__private::OwnActions);
     let (imp, ty, bounds) = input.generics.split_for_impl();
+    let mut primitive_generics = input.generics.clone();
+    let checkpoint = opts.checkpoint.map(|span| {
+        primitive_generics
+            .make_where_clause()
+            .predicates
+            .push(parse_quote_spanned!(span=> Self: ::core::clone::Clone));
+        quote! {
+            fn checkpoint(&self) -> ::core::option::Option<::std::boxed::Box<dyn ::core::any::Any + Send>> {
+                Some(::std::boxed::Box::new(::core::clone::Clone::clone(self)))
+            }
+
+            fn restore(&mut self, saved: ::std::boxed::Box<dyn ::core::any::Any + Send>) {
+                if let Ok(saved) = saved.downcast::<Self>() {
+                    *self = *saved;
+                }
+            }
+        }
+    });
+    let (primitive_impl, _, primitive_bounds) = primitive_generics.split_for_impl();
     let empty = opts.no_actions.then(|| quote! {
         impl #imp #own for #id #ty #bounds {
             const ACTIONS: &'static [#c::ActionSpec] = &[];
@@ -166,7 +189,11 @@ pub(super) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
     Ok(quote! {
         #empty
 
-        impl #imp #c::Primitive for #id #ty #bounds { const NAME: &'static str = #name; const HIDDEN: bool = #hidden; }
+        impl #primitive_impl #c::Primitive for #id #ty #primitive_bounds {
+            const NAME: &'static str = #name;
+            const HIDDEN: bool = #hidden;
+            #checkpoint
+        }
 
         impl #imp #c::Behavior for #id #ty #bounds {
             // Always borrow so describing a non-Copy field cannot move it.

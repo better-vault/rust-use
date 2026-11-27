@@ -99,7 +99,7 @@ pub use rust_use_core::{
     ChangeSet, ChangeSource, Combobox, ComponentId, ComponentInfo, Decision, Describe, DragDrop,
     Field, Handle, InvokeError, Key, List, Orientation, Page, ParamSpec, PendingApproval, Popup,
     Press, Primitive, Query, Range, Ref, ResolveError, RovingFocus, Selection, SelectionMode,
-    Subscription, Tabs, Toggle, Transfer, Tree, TreeRow, Typeahead, Ui, Value,
+    Subscription, Tabs, Toggle, Transfer, Tree, TreeRow, Tx, Typeahead, Ui, Value,
 };
 
 #[cfg(feature = "agent")]
@@ -125,6 +125,7 @@ pub mod __private {
 }
 
 /// Define an agent-visible primitive and its actions.
+/// Add `#[primitive(checkpoint)]` to a `Clone` struct to enable atomic action batches.
 ///
 /// ```
 /// use rust_use::prelude::*;
@@ -158,10 +159,10 @@ pub mod prelude {
         ActionError, ActionSpec, Approvals, Args, Behavior, ChangeSource, Combobox, ComponentId,
         Decision, Describe, DragDrop, Field, Handle, Key, List, Orientation, Page, ParamSpec,
         PendingApproval, Popup, Press, Primitive, Query, Range, Ref, RovingFocus, Selection,
-        SelectionMode, Tabs, Toggle, Transfer, Tree, TreeRow, Typeahead, Ui, Value,
+        SelectionMode, Tabs, Toggle, Transfer, Tree, TreeRow, Tx, Typeahead, Ui, Value,
     };
     #[cfg(feature = "gpui")]
     pub use crate::{HandleExt, UiBinding, UiExt};
     #[cfg(feature = "agent")]
-    pub use crate::{SnapshotOptions, UiAgentExt, step};
+    pub use crate::{Script, SnapshotOptions, UiAgentExt, step};
 }

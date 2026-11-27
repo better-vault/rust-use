@@ -148,7 +148,19 @@ impl Display for Step {
 }
 
 /// A batch of typed steps or text parsed at dispatch time.
-pub struct Script(pub(crate) Batch);
+pub struct Script {
+    pub(crate) batch: Batch,
+    pub(crate) atomic: bool,
+}
+
+impl Script {
+    /// Require every step to succeed or restore the affected primitives.
+    #[must_use]
+    pub fn atomic(mut self) -> Self {
+        self.atomic = true;
+        self
+    }
+}
 
 pub(crate) enum Batch {
     Text(String),
@@ -157,7 +169,10 @@ pub(crate) enum Batch {
 
 impl From<String> for Script {
     fn from(s: String) -> Self {
-        Self(Batch::Text(s))
+        Self {
+            batch: Batch::Text(s),
+            atomic: false,
+        }
     }
 }
 
@@ -169,7 +184,10 @@ impl From<&str> for Script {
 
 impl From<Vec<Step>> for Script {
     fn from(v: Vec<Step>) -> Self {
-        Self(Batch::Steps(v))
+        Self {
+            batch: Batch::Steps(v),
+            atomic: false,
+        }
     }
 }
 
@@ -231,6 +249,31 @@ pub enum ActError {
         /// Partial batch changes.
         diff: Diff,
     },
+    /// An atomic batch targets a component that cannot be restored.
+    #[error("{id} {component} can't be rolled back (add #[primitive(checkpoint)])")]
+    NotAtomic {
+        /// One-based failing index.
+        index: usize,
+        /// Canonical text of the failing step.
+        step: String,
+        /// Resolved component id.
+        id: ComponentId,
+        /// Primitive kind.
+        component: &'static str,
+    },
+    /// A step failed during atomic dispatch and the batch was rolled back.
+    #[error("step {index}: {source}")]
+    RolledBack {
+        /// One-based failing index.
+        index: usize,
+        /// Canonical text of the failing step.
+        step: String,
+        /// Core dispatch diagnostic.
+        #[source]
+        source: InvokeError,
+        /// Changes since dispatch began, including the current state of restored components.
+        diff: Diff,
+    },
 }
 
 impl ActError {
@@ -244,6 +287,13 @@ impl ActError {
                 source,
                 diff,
             } => format!("err {index} {step}: {source}\n{diff}"),
+            Self::NotAtomic { index, step, .. } => format!("err {index} {step}: {self}"),
+            Self::RolledBack {
+                index,
+                step,
+                source,
+                diff,
+            } => format!("err {index} {step}: {source}\nrolled back\n{diff}"),
         }
     }
 }

@@ -1,9 +1,10 @@
 use crate::{
     ActError, ActOutcome, Diff, QueryOutcome, Script, Snapshot, SnapshotMore, SnapshotOptions,
-    parse::Parser, types::Batch,
+    Step, parse::Parser, types::Batch,
 };
 use rust_use_core::{
-    ActionRequest, ChangeSource, ComponentInfo, Query, Ref, ResolveError, Subscription, Ui,
+    ActionRequest, ChangeSource, ComponentInfo, InvokeError, Query, Ref, ResolveError,
+    Subscription, Ui, Value,
 };
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -142,12 +143,14 @@ impl Agent {
     }
 
     /// Dispatch a batch in order and report changes made during the batch.
+    /// Use [`Script::atomic`] or a leading `atomic` directive to restore primitive
+    /// state if a step fails.
     /// With an approver installed, an action needing a person blocks the calling
     /// thread. Drive agents from a background thread so the GUI can answer.
     /// IPC already dispatches on a connection thread.
     ///
     /// # Errors
-    /// Returns a parse diagnostic or the failing step with the partial diff.
+    /// Returns a parse diagnostic, a validation error, or the failing step with its diff.
     ///
     /// ```
     /// use rust_use_agent::UiAgentExt;
@@ -160,9 +163,10 @@ impl Agent {
         reason = "The public API exposes the core error and partial diff directly."
     )]
     pub fn act(&self, script: impl Into<Script>) -> Result<ActOutcome, ActError> {
-        let steps = match script.into().0 {
+        let script = script.into();
+        let (header, steps) = match script.batch {
             Batch::Text(s) => Parser::new(&s).script()?,
-            Batch::Steps(v) => v,
+            Batch::Steps(v) => (false, v),
         };
         if steps.is_empty() {
             return Err(ActError::Parse {
@@ -172,33 +176,65 @@ impl Agent {
             });
         }
         let before = self.ui.revision();
-        let mut values = Vec::new();
-        for (i, s) in steps.into_iter().enumerate() {
-            let index = i + 1;
-            match self.ui.invoke(
-                s.target.clone(),
-                &s.action,
-                s.args.clone(),
-                ChangeSource::Agent,
-            ) {
-                Ok(v) => {
-                    if !v.is_null() {
-                        values.push((index, v));
-                    }
+        let atomic = header || script.atomic;
+        let result = if atomic {
+            self.act_atomic(&steps)
+        } else {
+            run_steps(&steps, |s| {
+                self.ui.invoke(
+                    s.target.clone(),
+                    &s.action,
+                    s.args.clone(),
+                    ChangeSource::Agent,
+                )
+            })
+        };
+        let values = result.map_err(|failure| {
+            let (i, source) = match failure {
+                DispatchError::Prepare(i, InvokeError::NotCheckpointable { id, component }) => {
+                    return ActError::NotAtomic {
+                        index: i + 1,
+                        step: steps[i].to_string(),
+                        id,
+                        component,
+                    };
                 }
-                Err(source) => {
-                    return Err(ActError::Step {
-                        index,
-                        step: s.to_string(),
+                DispatchError::Invoke(i, source) if atomic => {
+                    return ActError::RolledBack {
+                        index: i + 1,
+                        step: steps[i].to_string(),
                         source,
                         diff: self.finish_diff(before),
-                    });
+                    };
                 }
+                DispatchError::Prepare(i, source) | DispatchError::Invoke(i, source) => (i, source),
+            };
+            ActError::Step {
+                index: i + 1,
+                step: steps[i].to_string(),
+                source,
+                diff: self.finish_diff(before),
             }
-        }
+        })?;
         Ok(ActOutcome {
             values,
             diff: self.finish_diff(before),
+        })
+    }
+
+    fn act_atomic(&self, steps: &[Step]) -> Result<Vec<(usize, Value)>, DispatchError> {
+        self.ui.transaction(ChangeSource::Agent, |tx| {
+            let ids = steps
+                .iter()
+                .enumerate()
+                .map(|(i, s)| {
+                    tx.prepare(s.target.clone())
+                        .map_err(|source| DispatchError::Prepare(i, source))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            run_steps(steps.iter().zip(ids), |(s, id)| {
+                tx.invoke(id, &s.action, s.args.clone())
+            })
         })
     }
 
@@ -272,6 +308,25 @@ impl Agent {
             _ => format!("err unknown command `{cmd}` (try: hello, snapshot, diff, act, query)"),
         }
     }
+}
+
+enum DispatchError {
+    Prepare(usize, InvokeError),
+    Invoke(usize, InvokeError),
+}
+
+fn run_steps<T>(
+    steps: impl IntoIterator<Item = T>,
+    mut invoke: impl FnMut(T) -> Result<Value, InvokeError>,
+) -> Result<Vec<(usize, Value)>, DispatchError> {
+    let mut values = Vec::new();
+    for (i, step) in steps.into_iter().enumerate() {
+        let value = invoke(step).map_err(|source| DispatchError::Invoke(i, source))?;
+        if !value.is_null() {
+            values.push((i + 1, value));
+        }
+    }
+    Ok(values)
 }
 
 /// Open an agent session directly on a UI registry.

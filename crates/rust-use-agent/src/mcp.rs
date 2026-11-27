@@ -33,6 +33,15 @@ impl Endpoint for std::sync::Mutex<crate::ipc::Client> {
     }
 }
 
+/// Encode an action script for a text endpoint, adding the atomic directive if requested.
+pub fn act_request(script: &str, atomic: bool) -> String {
+    if atomic && crate::parse::atomic_header(script).is_none() {
+        format!("act atomic; {script}")
+    } else {
+        format!("act {script}")
+    }
+}
+
 /// Encode query arguments for a text endpoint, preserving literal labels and filters.
 pub fn query_request(target: &str, text: Option<&str>, from: Option<usize>) -> String {
     let mut request = String::from("query ");
@@ -106,6 +115,7 @@ struct Snapshot {
 #[derive(Deserialize, JsonSchema)]
 struct Act {
     script: String,
+    atomic: Option<bool>,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -206,10 +216,10 @@ impl<E: Endpoint> McpServer<E> {
     }
 
     #[tool(
-        description = "Run <ref> <action> [args] steps separated by ';'. Ref is @id, label or kind. Returns changes."
+        description = "Run <ref> <action> [args] steps separated by ';'. Ref is @id, label or kind. Set atomic to roll back on failure. Returns changes."
     )]
     fn act(&self, Parameters(input): Parameters<Act>) -> CallToolResult {
-        self.reply(&format!("act {}", input.script))
+        self.reply(&act_request(&input.script, input.atomic.unwrap_or(false)))
     }
 
     #[tool(
@@ -236,5 +246,35 @@ impl<E: Endpoint> ServerHandler for McpServer<E> {
             .with_instructions(
                 "Use snapshot to discover components, following more for further pages. Use act to receive changes.",
             )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn atomic_tool_option_adds_the_directive() -> Result<(), serde_json::Error> {
+        struct Echo;
+
+        impl Endpoint for Echo {
+            fn handle(&self, request: &str) -> String {
+                request.into()
+            }
+        }
+
+        let server = McpServer::new(Echo);
+        for script in ["board move e2e4", "atomic; board move e2e4"] {
+            let args =
+                serde_json::from_value(serde_json::json!({"script": script, "atomic": true}))?;
+            let reply = server.act(Parameters(args));
+            assert_eq!(
+                reply.content[0]
+                    .as_text()
+                    .map(|content| content.text.as_str()),
+                Some("act atomic; board move e2e4")
+            );
+        }
+        Ok(())
     }
 }

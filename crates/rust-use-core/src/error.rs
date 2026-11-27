@@ -44,6 +44,17 @@ pub enum InvokeError {
     /// The target could not be resolved.
     #[error(transparent)]
     Resolve(#[from] ResolveError),
+    /// An atomic batch requires a checkpoint that the primitive does not provide.
+    #[error("{id} {component} can't be rolled back (add #[primitive(checkpoint)])")]
+    NotCheckpointable {
+        /// Resolved component id.
+        id: ComponentId,
+        /// Primitive kind.
+        component: &'static str,
+    },
+    /// Another transaction reserves this primitive for action dispatch.
+    #[error("{0} is in an atomic batch")]
+    TransactionActive(ComponentId),
     /// The target does not implement this action.
     #[error("`{component}` has no action `{action}` (available: {available})")]
     UnknownAction {

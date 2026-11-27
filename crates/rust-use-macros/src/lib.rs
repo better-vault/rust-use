@@ -36,6 +36,8 @@ fn core_path() -> syn::Result<Tokens> {
 /// as `[redacted]` without serializing it. This covers fields only. Behaviors must
 /// redact sensitive items they return from `query` themselves.
 /// Use `#[primitive(hidden)]` to mount the component hidden from agents.
+/// Use `#[primitive(checkpoint)]` to opt in to atomic action batches. The struct must
+/// implement `Clone`, and its clone must capture the state its actions can change.
 ///
 /// ```ignore
 /// use rust_use::prelude::*;

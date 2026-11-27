@@ -2,6 +2,14 @@ use crate::{ActError, SnapshotOptions, Step, step};
 use rust_use_core::{Ref, Value};
 use serde_json::{Deserializer, Number};
 
+pub(crate) fn atomic_header(input: &str) -> Option<&str> {
+    let rest = input
+        .trim_start()
+        .strip_prefix("atomic")?
+        .trim_start_matches(|c: char| c.is_whitespace() && c != '\n');
+    (rest.is_empty() || rest.starts_with([';', '#', '\n'])).then_some(rest)
+}
+
 #[derive(Debug, thiserror::Error)]
 #[error("parse error at {line}:{column}: {message}")]
 pub(crate) struct Syntax {
@@ -156,7 +164,11 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(crate) fn script(mut self) -> Result<Vec<Step>, Syntax> {
+    pub(crate) fn script(mut self) -> Result<(bool, Vec<Step>), Syntax> {
+        let header = atomic_header(self.rest);
+        if let Some(rest) = header {
+            self.rest = rest;
+        }
         let mut steps = Vec::new();
         loop {
             self.spaces();
@@ -182,7 +194,7 @@ impl<'a> Parser<'a> {
         if steps.is_empty() {
             return Err(self.error("expected an action step"));
         }
-        Ok(steps)
+        Ok((header.is_some(), steps))
     }
 
     pub(crate) fn query(mut self) -> Result<(Ref, Option<String>, usize), Syntax> {

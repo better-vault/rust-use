@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `Invalid: Clone` is not satisfied
+ --> tests/ui/checkpoint_requires_clone.rs:4:25
+  |
+4 | #[primitive(no_actions, checkpoint)]
+  |                         ^^^^^^^^^^ the trait `Clone` is not implemented for `Invalid`
+  |
+help: consider annotating `Invalid` with `#[derive(Clone)]`
+  |
+5 + #[derive(Clone)]
+6 | struct Invalid;
+  |

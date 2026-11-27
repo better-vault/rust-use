@@ -126,8 +126,8 @@ rev 9
 
 When a step returns a non-null value, the line `=> <step index> <value>` comes before the diff.
 
-On failure, steps before the failing one stay applied by default (`atomic` is reserved for a later
-version). The reply names the step and gives enough for the agent to fix it without asking again:
+On failure, steps before the failing one stay applied by default. The reply names the step
+and gives enough for the agent to fix it without asking again:
 
 ```
 err 2 @2 move e2e5: illegal move (legal: a2a3 a2a4 b1a3 b1c3 …)
@@ -136,6 +136,34 @@ rev 8
 ```
 
 The error line comes first, then the diff of whatever the earlier steps changed.
+
+### Atomic scripts
+
+Start the script with `atomic` on its own line or followed by a semicolon. For example,
+`atomic; board move e2e4; board move e2e5`. In Rust, use `Script::from(steps).atomic()`.
+In the CLI, use `rust-use act --atomic "…"`. In MCP, pass `atomic: true` with the script.
+
+Every target must resolve to a primitive that supports checkpoints before any steps run.
+Use `#[primitive(checkpoint)]` on a `Clone` primitive, or implement the `Primitive::checkpoint`
+and `Primitive::restore` hooks manually. A target without a checkpoint causes a validation error
+with no revision change from the batch:
+
+```
+err 2 @3 set 50: @3 slider can't be rolled back (add #[primitive(checkpoint)])
+```
+
+If a step fails during dispatch, the reply adds `rolled back` after the error line. The diff
+shows the restored components at their original state, or only the `rev` line when there
+are no visible changes to report. Results from earlier steps are discarded. Subscribers see
+ordinary action events as the script runs, then one restoration event per restored primitive
+with a new revision.
+
+```
+err 2 board move e2e5: illegal move e2e5 (legal: a7a5 a7a6 …)
+rolled back
+rev 9
+@2 board "Chess board" ="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" turn=w !move(uci) !reset
+```
 
 ## Query
 

@@ -1,4 +1,5 @@
 use crate::{ActionError, ActionSpec, Args, Describe, Value};
+use std::any::Any;
 
 /// Reusable interaction logic exposing state and actions to agents.
 ///
@@ -68,6 +69,22 @@ pub trait Primitive: Behavior {
     const HIDDEN: bool = false;
     /// Kebab-case component kind.
     const NAME: &'static str;
+
+    /// Capture the primitive's state for an atomic action batch.
+    ///
+    /// The default returns `None`, which excludes this primitive from atomic batches.
+    /// Return an owned snapshot of all mutable state an action can change, including
+    /// fields omitted from agent descriptions. Implement [`Primitive::restore`] as well.
+    /// With the derive macro, `#[primitive(checkpoint)]` uses the primitive's `Clone`.
+    fn checkpoint(&self) -> Option<Box<dyn Any + Send>> {
+        None
+    }
+
+    /// Restore a snapshot returned by [`Primitive::checkpoint`] on this primitive.
+    ///
+    /// The default does nothing. A manual implementation must accept its own snapshot
+    /// and restore state without failing. External effects require their own rollback.
+    fn restore(&mut self, _saved: Box<dyn Any + Send>) {}
 }
 
 /// Text filter and pagination for an option list.

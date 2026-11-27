@@ -43,6 +43,9 @@ pub(crate) enum Command {
     Diff,
     /// Run one or more action steps.
     Act {
+        /// Roll back the whole batch if any step fails.
+        #[arg(long)]
+        atomic: bool,
         #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
         script: Vec<String>,
     },
@@ -76,4 +79,19 @@ pub(crate) enum Command {
     List,
     /// Serve the app's three MCP tools over stdio.
     Mcp,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_atomic_act_flag() -> Result<(), clap::Error> {
+        let cli = Cli::try_parse_from(["rust-use", "act", "--atomic", "board move e2e4"])?;
+        assert!(matches!(
+            cli.command,
+            Command::Act { atomic: true, script } if script == ["board move e2e4"]
+        ));
+        Ok(())
+    }
 }

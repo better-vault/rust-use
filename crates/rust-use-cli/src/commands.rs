@@ -4,7 +4,7 @@ use crate::{
 };
 use rust_use_agent::{
     ipc::{Client, Endpoint, IpcError, list_endpoints},
-    mcp::{McpServer, query_request, search_request, snapshot_request},
+    mcp::{McpServer, act_request, query_request, search_request, snapshot_request},
 };
 use std::{
     error::Error,
@@ -48,7 +48,7 @@ pub(crate) fn run(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
             from,
             limit,
         } => (snapshot_request(verbose, from, limit), cursor()?),
-        Command::Act { script } => (format!("act {}", script.join(" ")), cursor()?),
+        Command::Act { atomic, script } => (act_request(&script.join(" "), atomic), cursor()?),
         Command::Diff => ("diff".into(), cursor()?),
         Command::Query {
             target,

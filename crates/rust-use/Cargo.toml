@@ -34,6 +34,11 @@ ipc = ["agent", "rust-use-agent/ipc"]
 mcp = ["agent", "rust-use-agent/mcp"]
 
 [[example]]
+name = "agent_tour"
+required-features = ["macros", "agent"]
+test = true
+
+[[example]]
 name = "gpui_counter"
 required-features = ["gpui"]
 

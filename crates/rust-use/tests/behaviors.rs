@@ -282,6 +282,139 @@ fn list() -> Result<(), InvokeError> {
 }
 
 #[test]
+fn combobox_typed() -> Result<(), ActionError> {
+    let mut country = Combobox::new(vec!["Sweden", "Switzerland"]);
+    assert_eq!(country.options().items, ["Sweden", "Switzerland"]);
+    assert_eq!(country.value(), None);
+    assert_eq!(country.text(), None);
+    assert!(!country.is_open());
+
+    country.open();
+    assert!(matches!(
+        country.pick("sweden"),
+        Err(ActionError::Rejected(_))
+    ));
+    assert!(country.is_open());
+    assert_eq!(country.value(), None);
+    country.pick("Sweden")?;
+    assert_eq!(country.value(), Some(&"Sweden"));
+    assert!(!country.is_open());
+
+    country.open();
+    country.close();
+    assert_eq!(country.value(), Some(&"Sweden"));
+    assert!(!country.is_open());
+    country.clear();
+    assert_eq!(country.value(), None);
+    Ok(())
+}
+
+#[test]
+fn combobox_picks_and_suggests_matching_options() -> Result<(), InvokeError> {
+    let options = [
+        "North",
+        "north",
+        "Northeast",
+        "Northwest",
+        "Far North",
+        "True North",
+        "South",
+    ];
+    let mut box_input = Combobox::new(options.map(str::to_owned).to_vec());
+    box_input.open();
+    let choice = Mounted::new(box_input);
+    choice.check(
+        Describe::new().attr("n", options.len()).flag("open", true),
+        &["pick"],
+    )?;
+    assert!(matches!(
+        choice.act("pick", ("nort",)),
+        Err(InvokeError::Action(ActionError::Rejected(reason)))
+            if reason.ends_with(r#"["North","north","Northeast","Northwest","Far North"]"#)
+    ));
+    assert_eq!(
+        choice.ui.query(
+            choice.control.id(),
+            &Query {
+                text: Some("nort".into()),
+                from: 4,
+                limit: 1,
+            }
+        )?,
+        Some(Page {
+            items: vec![json!("Far North")],
+            total: 6,
+            next: Some(5)
+        }),
+    );
+
+    for (input, expected) in [("north", "north"), ("NORTH", "North")] {
+        choice.act("pick", (input,))?;
+        choice.check(
+            Describe::new().value(expected).attr("n", options.len()),
+            &["pick", "clear"],
+        )?;
+        assert_eq!(
+            choice.control.read(|c| c.input.value().cloned()),
+            Some(Some(expected.to_owned())),
+        );
+    }
+    choice.act("clear", ())?;
+    choice.check(Describe::new().attr("n", options.len()), &["pick"])?;
+
+    let number = Mounted::new(Combobox::new(vec![12, 123]));
+    number.act("pick", (12,))?;
+    assert_eq!(
+        number.control.read(|c| c.input.value().copied()),
+        Some(Some(12))
+    );
+    assert!(matches!(
+        number.act("pick", ("12",)),
+        Err(InvokeError::Action(ActionError::Rejected(reason))) if reason.ends_with("[12,123]")
+    ));
+    Ok(())
+}
+
+#[test]
+fn combobox_free_text_and_clear_are_gated() -> Result<(), InvokeError> {
+    let options = vec!["Sweden".to_owned()];
+    let locked = Mounted::new(Combobox::new(options.clone()));
+    assert_eq!(
+        locked.act("type", ("Elsewhere",)),
+        Err(ActionError::Disabled("type".into()).into())
+    );
+
+    let editable = Mounted::new(Combobox::new(options).free_text(true));
+    editable.check(Describe::new().attr("n", 1), &["pick", "type"])?;
+    assert_eq!(
+        editable.act("clear", ()),
+        Err(ActionError::Disabled("clear".into()).into())
+    );
+    editable.act("pick", ("Sweden",))?;
+    for text in ["Elsewhere", ""] {
+        editable.act("type", (text,))?;
+        editable.check(
+            Describe::new().value(text).attr("n", 1),
+            &["pick", "type", "clear"],
+        )?;
+        assert_eq!(
+            editable
+                .control
+                .read(|c| (c.input.value().cloned(), c.input.text().map(str::to_owned))),
+            Some((None, Some(text.to_owned()))),
+        );
+    }
+    editable.act("pick", ("sweden",))?;
+    assert_eq!(
+        editable.control.read(|c| c.input.text().is_none()),
+        Some(true)
+    );
+    editable.act("type", ("Elsewhere",))?;
+    editable.act("clear", ())?;
+    editable.check(Describe::new().attr("n", 1), &["pick", "type"])
+}
+
+#[test]
 fn transfer() -> Result<(), Box<dyn std::error::Error>> {
     #[derive(Primitive)]
     #[primitive(no_actions)]

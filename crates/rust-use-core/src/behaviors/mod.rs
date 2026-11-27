@@ -1,3 +1,5 @@
+mod combobox;
+
 mod drag_drop;
 
 mod list;
@@ -24,6 +26,7 @@ mod typeahead;
 
 mod value;
 
+pub use combobox::Combobox;
 pub use drag_drop::DragDrop;
 pub use list::List;
 pub use popup::Popup;

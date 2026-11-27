@@ -1,52 +1,97 @@
-//! A library of UI behaviors that agents can use to build and drive user interfaces.
-//! Most users should depend on this facade crate for access to the core and optional adapters.
+//! A library of behaviors for agents to build and drive the next generation of user interfaces.
+//!
+//! You write ordinary Rust: a struct for a component's state, methods for what it can do. Mount it
+//! in a [`Ui`] and an agent can see it and operate it by name, through one compact line of text
+//! per component, without screenshots, accessibility-tree crawling or pixel clicks. People get
+//! the same component through your UI (GPUI first), and both go through the same actions, change
+//! events and `allow` checks.
+//!
+//! **rust-use is in beta.** APIs and the compact format may change between minor versions until
+//! 1.0.
 //!
 //! ```toml
 //! [dependencies]
-//! rust-use = "0.1"
+//! rust-use = "0.1"                                     # or: features = ["gpui", "ipc"]
 //! ```
 //!
-//! - `macros` enables procedural macros and is enabled by default.
-//! - `agent` enables the agent bridge and is enabled by default.
-//! - `gpui` enables the GPUI adapter, the agent bridge, and procedural macros.
-//! - `ipc` serves the bridge over local sockets.
-//! - `mcp` serves the agent bridge over MCP stdio.
+//! | Feature | Default | Adds |
+//! | --- | --- | --- |
+//! | `macros` | ✓ | [`Primitive`](macro@Primitive) and [`actions`] |
+//! | `agent` | ✓ | the agent bridge: [`agent`] (`snapshot`, `diff`, `act`, `query`, `allow`) |
+//! | `gpui` | | the GPUI adapter, as `rust_use::gpui` |
+//! | `ipc` | | a local socket server and client so out-of-process agents reach a running app |
+//! | `mcp` | | the same three tools served over MCP |
 
 #![cfg_attr(
-    feature = "macros",
+    all(feature = "macros", feature = "agent"),
     doc = r#"
-## Embedding behaviors
-
-Use a `#[behavior]` field to expose a behavior's description, actions and queries
-through a primitive. The same field provides typed methods for application code.
+## Quick start
 
 ```
 use rust_use::prelude::*;
 
-#[derive(Primitive)]
-#[primitive(no_actions)]
-struct Control<B: Behavior> {
-    #[behavior]
-    input: B,
+/// A button that mutes audio.
+#[derive(Primitive, Default)]
+struct MuteButton {
+    #[agent(value)]
+    muted: bool,
+}
+
+#[actions]
+impl MuteButton {
+    /// Mute or unmute.
+    fn toggle(&mut self) {
+        self.muted = !self.muted;
+    }
 }
 
 let ui = Ui::new();
-let switch = ui.mount(Control { input: Toggle::default() });
-ui.invoke(switch.id(), "toggle", (), ChangeSource::Agent)?;
-assert_eq!(switch.read(|c| c.input.is_on()), Some(true));
+let mute = ui.mount(MuteButton::default()).label("Mute");
 
-let _button = Control { input: Press::new() };
-let _field = Control { input: Field::new(42) };
-let _choices = Control { input: Selection::<String>::new(SelectionMode::Multiple) };
-let _list = Control { input: List::new(vec!["pear", "plum"]) };
-let _focus = Control { input: RovingFocus::new(Orientation::Vertical, 2) };
-let _search = Control { input: Typeahead::default() };
-let _menu = Control { input: Popup::default() };
-let _board = Control { input: DragDrop::<u64>::default() };
-# Ok::<(), rust_use::InvokeError>(())
+// What an agent reads: one line per component, with the actions available right now.
+let agent = ui.agent();
+assert_eq!(
+    agent.snapshot().to_string(),
+    "rev 2\n@1 mute-button \"Mute\" =false !toggle"
+);
+
+// What an agent sends. The reply carries only what changed.
+let reply = agent.act("Mute toggle")?;
+assert!(reply.to_string().ends_with("@1 mute-button \"Mute\" =true !toggle"));
+assert_eq!(mute.read(|m| m.muted), Some(true));
+# Ok::<(), rust_use::agent::ActError>(())
+```
+
+## Behaviors
+
+Reusable interaction logic embeds into a component with `#[behavior]`. Its state and actions merge
+into the component's own, and its typed methods stay available to your code.
+
+```
+use rust_use::prelude::*;
+
+/// Tabs along the top of a settings window.
+#[derive(Primitive)]
+#[primitive(no_actions)]
+struct Tabs {
+    #[behavior]
+    selected: Selection<String>,
+}
+
+let ui = Ui::new();
+let tabs = ui.mount(Tabs { selected: Selection::new(SelectionMode::Single) }).label("Settings");
+ui.agent().act("Settings select general")?;
+assert_eq!(tabs.read(|t| t.selected.selected().to_vec()), Some(vec!["general".to_owned()]));
+# Ok::<(), rust_use::agent::ActError>(())
 ```
 "#
 )]
+//!
+//! ## Where things are
+//!
+//! - The core, at the crate root: [`Ui`], [`Handle`], [`Primitive`], [`Behavior`], [`Describe`],
+//!   [`ChangeSource`] and the behaviors ([`Toggle`], [`Selection`], [`List`], [`RovingFocus`], …).
+//! - [`prelude`]: the imports nearly every program needs.
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub use rust_use_core::{

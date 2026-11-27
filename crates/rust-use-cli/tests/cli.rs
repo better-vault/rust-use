@@ -12,11 +12,7 @@ impl Behavior for Button {
         d.value(self.0);
     }
     fn actions(&self) -> Vec<ActionSpec> {
-        vec![ActionSpec {
-            name: "press",
-            params: &[],
-            doc: "Press.",
-        }]
+        vec![ActionSpec::new("press", "Press.", &[])]
     }
     fn invoke(&mut self, name: &str, _: &Args) -> Option<Result<Value, ActionError>> {
         (name == "press").then(|| {

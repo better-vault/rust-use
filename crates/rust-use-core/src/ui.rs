@@ -13,9 +13,10 @@ use std::{
     time::SystemTime,
 };
 
+use crate::approvals::Registration;
 use crate::{
-    ActionError, ActionRequest, ActionSpec, Args, Behavior, ChangeSource, Decision, Describe,
-    InvokeError, Page, Primitive, Query, ResolveError, Value,
+    ActionError, ActionRequest, ActionSpec, Approvals, Args, Behavior, ChangeSource, Decision,
+    Describe, InvokeError, Page, Primitive, Query, ResolveError, Value,
 };
 
 /// Stable numeric component identifier, displayed as `@1`, `@2`, etc.
@@ -78,6 +79,8 @@ impl From<&str> for Ref {
 /// Agent-visible snapshot of one component.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentInfo {
+    /// Whether agents are denied access.
+    pub hidden: bool,
     /// Stable id.
     pub id: ComponentId,
     /// Primitive kind.
@@ -120,6 +123,8 @@ pub enum ChangeKind {
     Updated,
     /// The label was set.
     Relabeled,
+    /// Agent visibility changed.
+    Visibility,
 }
 
 /// Components affected since a given revision.
@@ -129,11 +134,11 @@ pub struct ChangeSet {
     pub revision: u64,
     /// Mounted components changed since the supplied revision.
     pub changed: Vec<ComponentId>,
-    /// Removed components among the last 1024 unmounts.
+    /// Removed components among the last 1024 unmounts, plus newly hidden components for agent changes.
     pub removed: Vec<ComponentId>,
 }
 
-fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
@@ -155,10 +160,19 @@ impl<P: Primitive> Erased for P {
 type Cell = Arc<Mutex<Box<dyn Erased>>>;
 
 struct Entry {
+    hidden: bool,
+    // Revision at which agents last lost access, or zero if never visible.
+    hidden_since: u64,
     name: &'static str,
     label: Option<String>,
     revision: u64,
     cell: Cell,
+}
+
+impl Entry {
+    fn accessible(&self, source: ChangeSource) -> bool {
+        source != ChangeSource::Agent || !self.hidden
+    }
 }
 
 #[derive(Default)]
@@ -166,7 +180,7 @@ struct Registry {
     entries: BTreeMap<ComponentId, Entry>,
     last_id: u32,
     revision: u64,
-    removed: VecDeque<(ComponentId, u64)>,
+    removed: VecDeque<(ComponentId, u64, u64)>,
 }
 
 impl Registry {
@@ -183,12 +197,13 @@ impl Registry {
         }
     }
 
-    fn resolve(&self, r: Ref) -> Result<ComponentId, ResolveError> {
+    fn resolve(&self, r: Ref, source: ChangeSource) -> Result<ComponentId, ResolveError> {
         let query = match r {
             Ref::Id(id) => {
                 return self
                     .entries
-                    .contains_key(&id)
+                    .get(&id)
+                    .is_some_and(|e| e.accessible(source))
                     .then_some(id)
                     .ok_or_else(|| missing(id));
             }
@@ -197,6 +212,9 @@ impl Registry {
         let folded = query.to_lowercase();
         let mut matches = [Vec::new(), Vec::new(), Vec::new()];
         for (&id, e) in &self.entries {
+            if !e.accessible(source) {
+                continue;
+            }
             if e.label.as_ref() == Some(&query) {
                 matches[0].push(id);
             } else if e.label.as_ref().is_some_and(|s| s.to_lowercase() == folded) {
@@ -220,7 +238,7 @@ fn missing(id: ComponentId) -> ResolveError {
     ResolveError::NotFound(id.to_string())
 }
 
-type Hooks<F> = Arc<Mutex<Vec<Arc<F>>>>;
+pub(crate) type Hooks<F> = Arc<Mutex<Vec<Arc<F>>>>;
 
 type Interceptor = dyn Fn(&ActionRequest<'_>) -> Decision + Send + Sync;
 
@@ -229,6 +247,7 @@ type Subscriber = dyn Fn(&ChangeEvent) + Send + Sync;
 struct Inner {
     session: u64,
     state: Mutex<Registry>,
+    approver: Mutex<Option<Arc<Registration>>>,
     interceptors: Hooks<Interceptor>,
     subscribers: Hooks<Subscriber>,
 }
@@ -246,6 +265,7 @@ impl Default for Inner {
         Self {
             session,
             state: Mutex::default(),
+            approver: Mutex::default(),
             interceptors: Arc::default(),
             subscribers: Arc::default(),
         }
@@ -297,6 +317,8 @@ impl Ui {
             id,
             Entry {
                 name: P::NAME,
+                hidden: P::HIDDEN,
+                hidden_since: 0,
                 label: None,
                 revision: 0,
                 cell: Arc::new(Mutex::new(Box::new(primitive))),
@@ -326,15 +348,25 @@ impl Ui {
 
     /// Describe mounted components in ascending id order.
     pub fn components(&self) -> Vec<ComponentInfo> {
-        let ids: Vec<_> = lock(&self.inner.state).entries.keys().copied().collect();
+        self.components_for(ChangeSource::Program)
+    }
+
+    /// Describe only components accessible to the given source, in id order.
+    pub fn components_for(&self, source: ChangeSource) -> Vec<ComponentInfo> {
+        let ids: Vec<_> = lock(&self.inner.state)
+            .entries
+            .iter()
+            .filter(|(_, e)| e.accessible(source))
+            .map(|(&id, _)| id)
+            .collect();
         ids.into_iter()
-            .filter_map(|id| self.component(id).ok())
+            .filter_map(|id| self.component_for(id, source).ok())
             .collect()
     }
 
-    fn target(&self, r: Ref) -> Result<(ComponentId, Cell), ResolveError> {
+    fn target(&self, r: Ref, source: ChangeSource) -> Result<(ComponentId, Cell), ResolveError> {
         let state = lock(&self.inner.state);
-        let id = state.resolve(r)?;
+        let id = state.resolve(r, source)?;
         Ok((id, state.entries[&id].cell.clone()))
     }
 
@@ -343,16 +375,34 @@ impl Ui {
     /// # Errors
     /// Returns a resolution error for missing or ambiguous targets.
     pub fn component(&self, r: impl Into<Ref>) -> Result<ComponentInfo, ResolveError> {
-        let (id, cell) = self.target(r.into())?;
+        self.component_for(r, ChangeSource::Program)
+    }
+
+    /// Describe an accessible component and its enabled actions.
+    ///
+    /// # Errors
+    /// Returns a resolution error for missing or ambiguous accessible targets.
+    pub fn component_for(
+        &self,
+        r: impl Into<Ref>,
+        source: ChangeSource,
+    ) -> Result<ComponentInfo, ResolveError> {
+        let (id, cell) = self.target(r.into(), source)?;
         let guard = lock(&cell);
         let state = lock(&self.inner.state);
-        let e = state.entries.get(&id).ok_or_else(|| missing(id))?;
+        let e = state
+            .entries
+            .get(&id)
+            .filter(|e| e.accessible(source))
+            .ok_or_else(|| missing(id))?;
+        let hidden = e.hidden;
         let (name, label, revision) = (e.name, e.label.clone(), e.revision);
         drop(state);
         let mut describe = Describe::new();
         guard.describe(&mut describe);
         let actions = enabled(&**guard);
         Ok(ComponentInfo {
+            hidden,
             id,
             name,
             label,
@@ -368,26 +418,63 @@ impl Ui {
     /// # Errors
     /// Returns a resolution error for missing or ambiguous targets.
     pub fn resolve(&self, r: impl Into<Ref>) -> Result<ComponentId, ResolveError> {
-        lock(&self.inner.state).resolve(r.into())
+        self.resolve_for(r, ChangeSource::Program)
+    }
+
+    /// Resolve a reference among components accessible to this source.
+    ///
+    /// # Errors
+    /// Returns a resolution error for missing or ambiguous accessible targets.
+    pub fn resolve_for(
+        &self,
+        r: impl Into<Ref>,
+        source: ChangeSource,
+    ) -> Result<ComponentId, ResolveError> {
+        lock(&self.inner.state).resolve(r.into(), source)
     }
 
     /// Collect changed ids and retained removals after a revision.
     pub fn changes_since(&self, revision: u64) -> ChangeSet {
+        self.collect_changes(revision, false)
+    }
+
+    /// Collect changes visible to agents, including removals caused by hiding components.
+    pub fn agent_changes_since(&self, revision: u64) -> ChangeSet {
+        self.collect_changes(revision, true)
+    }
+
+    fn collect_changes(&self, revision: u64, agent: bool) -> ChangeSet {
         let state = lock(&self.inner.state);
+        let mut removed: Vec<_> = state
+            .removed
+            .iter()
+            .filter(|(_, unmount, visible_end)| {
+                if agent {
+                    *visible_end > revision
+                } else {
+                    *unmount > revision
+                }
+            })
+            .map(|(id, _, _)| *id)
+            .collect();
+        if agent {
+            removed.extend(
+                state
+                    .entries
+                    .iter()
+                    .filter(|(_, e)| e.hidden && e.hidden_since > revision)
+                    .map(|(&id, _)| id),
+            );
+        }
         ChangeSet {
             revision: state.revision,
             changed: state
                 .entries
                 .iter()
-                .filter(|(_, e)| e.revision > revision)
+                .filter(|(_, e)| e.revision > revision && (!agent || !e.hidden))
                 .map(|(&id, _)| id)
                 .collect(),
-            removed: state
-                .removed
-                .iter()
-                .filter(|(_, r)| *r > revision)
-                .map(|(id, _)| *id)
-                .collect(),
+            removed,
         }
     }
 
@@ -402,7 +489,7 @@ impl Ui {
     /// impl Behavior for Counter {
     ///     fn describe(&self, out: &mut Describe) { out.value(self.0); }
     ///     fn actions(&self) -> Vec<ActionSpec> {
-    ///         vec![ActionSpec { name: "increment", doc: "Add one", params: &[] }]
+    ///         vec![ActionSpec::new("increment", "Add one", &[])]
     ///     }
     ///     fn invoke(&mut self, action: &str, _: &Args) -> Option<Result<Value, ActionError>> {
     ///         (action == "increment").then(|| { self.0 += 1; Ok(self.0.into()) })
@@ -422,15 +509,19 @@ impl Ui {
         source: ChangeSource,
     ) -> Result<Value, InvokeError> {
         let args = args.into();
-        let (id, cell) = self.target(r.into())?;
+        let (id, cell) = self.target(r.into(), source)?;
         let mut guard = lock(&cell);
         let state = lock(&self.inner.state);
-        let entry = state.entries.get(&id).ok_or_else(|| missing(id))?;
-        let (name, label, revision) = (entry.name, entry.label.clone(), entry.revision);
+        let entry = state
+            .entries
+            .get(&id)
+            .filter(|e| e.accessible(source))
+            .ok_or_else(|| missing(id))?;
+        let (name, label) = (entry.name, entry.label.clone());
         drop(state);
-        check_action(&**guard, name, action)?;
+        let confirm = check_action(&**guard, name, action)?;
         let hooks = lock(&self.inner.interceptors).clone();
-        if !hooks.is_empty() {
+        if !hooks.is_empty() || (source == ChangeSource::Agent && confirm.is_some()) {
             drop(guard);
             let request = ActionRequest {
                 id,
@@ -439,20 +530,30 @@ impl Ui {
                 action,
                 args: &args,
                 source,
+                confirm,
             };
             for hook in hooks {
                 if let Decision::Deny(reason) = hook(&request) {
                     return Err(InvokeError::Denied(reason));
                 }
             }
+            if source == ChangeSource::Agent
+                && let Some(text) = confirm
+            {
+                self.resolve_for(id, source)?;
+                let approver = lock(&self.inner.approver)
+                    .clone()
+                    .ok_or_else(|| InvokeError::Denied(format!("needs a person: {text}")))?;
+                approver.wait(&request, text).map_err(InvokeError::Denied)?;
+            }
             guard = lock(&cell);
-            let current = lock(&self.inner.state)
-                .entries
-                .get(&id)
-                .ok_or_else(|| missing(id))?
-                .revision;
-            if current != revision {
-                check_action(&**guard, name, action)?;
+            self.resolve_for(id, source)?;
+            let updated = check_action(&**guard, name, action)?;
+            if source == ChangeSource::Agent
+                && updated != confirm
+                && let Some(text) = updated
+            {
+                return Err(InvokeError::Denied(format!("needs a person: {text}")));
             }
         }
         let result = guard
@@ -469,10 +570,45 @@ impl Ui {
     /// # Errors
     /// Returns a resolution error for missing or ambiguous targets.
     pub fn query(&self, r: impl Into<Ref>, query: &Query) -> Result<Option<Page>, ResolveError> {
-        let (id, cell) = self.target(r.into())?;
+        self.query_for(r, query, ChangeSource::Program)
+    }
+
+    /// Query an accessible component using source-aware resolution.
+    ///
+    /// # Errors
+    /// Returns a resolution error for missing or ambiguous accessible targets.
+    pub fn query_for(
+        &self,
+        r: impl Into<Ref>,
+        query: &Query,
+        source: ChangeSource,
+    ) -> Result<Option<Page>, ResolveError> {
+        let (id, cell) = self.target(r.into(), source)?;
         let guard = lock(&cell);
-        self.resolve(id)?;
+        self.resolve_for(id, source)?;
         Ok(guard.query(query))
+    }
+
+    /// Install a queue for agent actions requiring a person. Replacing or dropping
+    /// this registration releases its pending requests. See [`Approvals`].
+    pub fn require_approval(&self, approvals: &Approvals) -> Subscription {
+        let registration = Arc::new(Registration::new(approvals));
+        let mut slot = lock(&self.inner.approver);
+        if let Some(previous) = slot.replace(registration.clone()) {
+            previous.close();
+        }
+        let inner = Arc::downgrade(&self.inner);
+        Subscription {
+            unregister: Some(Box::new(move || {
+                if let Some(inner) = inner.upgrade() {
+                    let mut slot = lock(&inner.approver);
+                    if slot.as_ref().is_some_and(|r| Arc::ptr_eq(r, &registration)) {
+                        slot.take();
+                    }
+                }
+                registration.close();
+            })),
+        }
     }
 
     /// Register a veto hook for every source, in registration order.
@@ -515,14 +651,21 @@ fn unknown(p: &dyn Erased, name: &str, action: &str) -> InvokeError {
     }
 }
 
-fn check_action(p: &dyn Erased, name: &str, action: &str) -> Result<(), InvokeError> {
+fn check_action(
+    p: &dyn Erased,
+    name: &str,
+    action: &str,
+) -> Result<Option<&'static str>, InvokeError> {
     if !p.owns(action) {
         return Err(unknown(p, name, action));
     }
     if !p.is_enabled(action) {
         return Err(ActionError::Disabled(action.into()).into());
     }
-    Ok(())
+    Ok(p.actions()
+        .iter()
+        .find(|a| a.name == action)
+        .and_then(|a| a.confirm))
 }
 
 /// Typed access to a mounted primitive. Dropping a handle leaves it mounted.
@@ -576,9 +719,42 @@ impl<P: Primitive> Handle<P> {
         self.ui.notify(&event);
     }
 
+    /// Hide the component from agent discovery and dispatch.
+    pub fn hide_from_agents(&self) {
+        self.set_hidden(true);
+    }
+
+    /// Allow agents to discover and use this component.
+    pub fn show_to_agents(&self) {
+        self.set_hidden(false);
+    }
+
+    fn set_hidden(&self, hidden: bool) {
+        let Ok((_, cell)) = self.ui.target(self.id.into(), ChangeSource::Program) else {
+            return;
+        };
+        let guard = lock(&cell);
+        let mut state = lock(&self.ui.inner.state);
+        let next = state.revision + 1;
+        let Some(entry) = state.entries.get_mut(&self.id) else {
+            return;
+        };
+        if entry.hidden == hidden {
+            return;
+        }
+        entry.hidden = hidden;
+        if hidden {
+            entry.hidden_since = next;
+        }
+        let event = state.event(self.id, ChangeKind::Visibility, ChangeSource::Program);
+        drop(state);
+        drop(guard);
+        self.ui.notify(&event);
+    }
+
     /// Read under the component lock, returning `None` after unmount.
     pub fn read<R>(&self, f: impl FnOnce(&P) -> R) -> Option<R> {
-        let (_, cell) = self.ui.target(self.id.into()).ok()?;
+        let (_, cell) = self.ui.target(self.id.into(), ChangeSource::Program).ok()?;
         let guard = lock(&cell);
         self.ui.resolve(self.id).ok()?;
         Some(f(guard.as_any().downcast_ref()?))
@@ -586,7 +762,7 @@ impl<P: Primitive> Handle<P> {
 
     /// Mutate directly under the component lock and report an update.
     pub fn update<R>(&self, source: ChangeSource, f: impl FnOnce(&mut P) -> R) -> Option<R> {
-        let (_, cell) = self.ui.target(self.id.into()).ok()?;
+        let (_, cell) = self.ui.target(self.id.into(), ChangeSource::Program).ok()?;
         let mut guard = lock(&cell);
         self.ui.resolve(self.id).ok()?;
         let result = f(guard.as_any_mut().downcast_mut()?);
@@ -611,19 +787,27 @@ impl<P: Primitive> Handle<P> {
 
     /// Remove the component, invalidating all its handles.
     pub fn unmount(self) {
-        let Ok((_, cell)) = self.ui.target(self.id.into()) else {
+        let Ok((_, cell)) = self.ui.target(self.id.into(), ChangeSource::Program) else {
             return;
         };
         let guard = lock(&cell);
         let mut state = lock(&self.ui.inner.state);
-        if state.entries.remove(&self.id).is_none() {
+        let Some(entry) = state.entries.remove(&self.id) else {
             return;
-        }
+        };
         let event = state.event(self.id, ChangeKind::Unmounted, ChangeSource::Program);
         if state.removed.len() == 1024 {
             state.removed.pop_front();
         }
-        state.removed.push_back((self.id, event.revision));
+        state.removed.push_back((
+            self.id,
+            event.revision,
+            if entry.hidden {
+                entry.hidden_since
+            } else {
+                event.revision
+            },
+        ));
         drop(state);
         drop(guard);
         self.ui.notify(&event);
@@ -656,7 +840,10 @@ impl Drop for Subscription {
     }
 }
 
-fn register<F: ?Sized + Send + Sync + 'static>(hooks: &Hooks<F>, f: Arc<F>) -> Subscription {
+pub(crate) fn register<F: ?Sized + Send + Sync + 'static>(
+    hooks: &Hooks<F>,
+    f: Arc<F>,
+) -> Subscription {
     lock(hooks).push(f.clone());
     let hooks = Arc::downgrade(hooks);
     Subscription {

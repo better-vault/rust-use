@@ -4,6 +4,8 @@
 #![deny(missing_docs)]
 
 mod action;
+mod approvals;
+pub use approvals::{Approvals, PendingApproval};
 
 mod behavior;
 

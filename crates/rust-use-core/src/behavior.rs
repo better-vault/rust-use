@@ -64,6 +64,8 @@ pub trait Behavior: Send + 'static {
 
 /// A behavior mountable as an agent-visible component.
 pub trait Primitive: Behavior {
+    /// Whether agents initially have access to this primitive (hidden when true).
+    const HIDDEN: bool = false;
     /// Kebab-case component kind.
     const NAME: &'static str;
 }

@@ -19,18 +19,16 @@ impl Behavior for Counter {
     }
     fn actions(&self) -> Vec<ActionSpec> {
         ["add", "reset", "fallthrough"]
-            .map(|name| ActionSpec {
-                name,
-                doc: "",
-                params: if name == "add" {
-                    &[ParamSpec {
-                        name: "amount",
-                        ty: "int",
-                        optional: false,
-                    }]
-                } else {
-                    &[]
-                },
+            .map(|name| {
+                ActionSpec::new(
+                    name,
+                    "",
+                    if name == "add" {
+                        const { &[ParamSpec::new("amount", "int")] }
+                    } else {
+                        &[]
+                    },
+                )
             })
             .to_vec()
     }

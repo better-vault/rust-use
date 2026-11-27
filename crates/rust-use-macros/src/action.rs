@@ -8,6 +8,7 @@ use syn::{
 #[derive(Default)]
 struct Options {
     skip: bool,
+    confirm: Option<LitStr>,
     enabled: Option<Path>,
     name: Option<LitStr>,
 }
@@ -18,6 +19,8 @@ fn options(attrs: &mut Vec<Attribute>) -> syn::Result<Options> {
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("skip") {
                 opts.skip = true;
+            } else if meta.path.is_ident("confirm") {
+                opts.confirm = Some(meta.value()?.parse()?);
             } else if meta.path.is_ident("enabled") {
                 opts.enabled = Some(meta.value()?.parse()?);
             } else if meta.path.is_ident("name") {
@@ -131,7 +134,8 @@ fn parameters(
         };
         let ty = inner.unwrap_or(&arg.ty);
         let short = type_name(ty)?;
-        params.push(quote!(#core::ParamSpec { name: #label, ty: #short, optional: #optional }));
+        let modifier = optional.then(|| quote!(.optional()));
+        params.push(quote!(#core::ParamSpec::new(#label, #short)#modifier));
         reads.push(quote!(args.#decoder::<#ty>(#idx, #label)?));
     }
     Ok((params, reads))
@@ -179,8 +183,9 @@ fn generate(method: &ImplItemFn, opts: Options, c: &TokenStream) -> syn::Result<
     let enabled = opts
         .enabled
         .map_or_else(|| quote!(true), |path| quote!(#path(self)));
+    let confirm = opts.confirm.map(|text| quote!(.confirm(#text)));
     Ok(Generated {
-        spec: quote!(#(#cfg)* #c::ActionSpec {name: #name, doc: #doc, params: &[#(#params),*]}),
+        spec: quote!(#(#cfg)* #c::ActionSpec::new(#name, #doc, &[#(#params),*])#confirm),
         enabled: quote!(#(#cfg)* #name => Some(#enabled),),
         invoke: quote!(#(#cfg)* #name => Some((|| {
             if args.len() > #count {

@@ -32,6 +32,10 @@ fn core_path() -> syn::Result<Tokens> {
 }
 
 /// Describe a named-field or unit struct as an agent-visible primitive.
+/// Mark a field with `#[agent(secret)]` or `#[agent(value, secret)]` to describe it
+/// as `[redacted]` without serializing it. This covers fields only. Behaviors must
+/// redact sensitive items they return from `query` themselves.
+/// Use `#[primitive(hidden)]` to mount the component hidden from agents.
 ///
 /// ```ignore
 /// use rust_use::prelude::*;
@@ -48,6 +52,7 @@ pub fn primitive(input: TokenStream) -> TokenStream {
 }
 
 /// Expose documented mutable methods as positional actions.
+/// Use `#[action(confirm = "Delete the project")]` to require approval for agent calls.
 ///
 /// ```ignore
 /// use rust_use::prelude::*;

@@ -1,0 +1,5 @@
+error: unknown primitive option
+ --> tests/ui/unknown_primitive.rs:4:13
+  |
+4 | #[primitive(unknown)]
+  |             ^^^^^^^

@@ -10,6 +10,7 @@ struct Options {
     name: Option<LitStr>,
     root: Option<Path>,
     no_actions: bool,
+    hidden: bool,
 }
 
 impl Options {
@@ -25,6 +26,8 @@ impl Options {
                     options.name = Some(meta.value()?.parse()?);
                 } else if meta.path.is_ident("crate") {
                     options.root = Some(meta.value()?.parse::<LitStr>()?.parse()?);
+                } else if meta.path.is_ident("hidden") {
+                    options.hidden = true;
                 } else if meta.path.is_ident("no_actions") {
                     options.no_actions = true;
                 } else {
@@ -54,6 +57,7 @@ impl<'a> Description<'a> {
         };
         let mut name = id.unraw().to_string();
         let mut mode = None;
+        let mut secret = false;
         for attr in &field.attrs {
             if attr.path().is_ident("behavior") {
                 attr.meta.require_path_only()?;
@@ -64,6 +68,10 @@ impl<'a> Description<'a> {
                 attr.parse_nested_meta(|meta| {
                     if meta.path.is_ident("rename") {
                         name = meta.value()?.parse::<LitStr>()?.value();
+                        return Ok(());
+                    }
+                    if meta.path.is_ident("secret") {
+                        secret = true;
                         return Ok(());
                     }
                     let key = ["value", "flag", "skip"]
@@ -78,14 +86,27 @@ impl<'a> Description<'a> {
             }
         }
         let span = id.span();
+        let value = if secret {
+            quote!("[redacted]")
+        } else {
+            quote_spanned!(span=> &self.#id)
+        };
         match mode {
+            Some("flag") if secret => {
+                return Err(Error::new(
+                    span,
+                    "a flag shows only true/false; it can't be secret",
+                ));
+            }
+            Some("behavior") if secret => {
+                return Err(Error::new(span, "a behavior field cannot be secret"));
+            }
             Some("value") => {
                 if self.has_value {
                     return Err(Error::new(span, "only one field may have #[agent(value)]"));
                 }
                 self.has_value = true;
-                self.fields
-                    .push(quote_spanned!(span=> out.value(&self.#id);));
+                self.fields.push(quote_spanned!(span=> out.value(#value);));
             }
             Some("behavior") => self.behaviors.push(id),
             Some("flag") => self
@@ -94,7 +115,7 @@ impl<'a> Description<'a> {
             Some("skip") => (),
             _ => self
                 .fields
-                .push(quote_spanned!(span=> out.attr(#name,&self.#id);)),
+                .push(quote_spanned!(span=> out.attr(#name,#value);)),
         }
         Ok(())
     }
@@ -130,6 +151,7 @@ pub(super) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
     } else {
         super::core_path()?
     };
+    let hidden = opts.hidden;
     let own = quote!(#c::__private::OwnActions);
     let (imp, ty, bounds) = input.generics.split_for_impl();
     let empty = opts.no_actions.then(|| quote! {
@@ -144,7 +166,7 @@ pub(super) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
     Ok(quote! {
         #empty
 
-        impl #imp #c::Primitive for #id #ty #bounds { const NAME: &'static str = #name; }
+        impl #imp #c::Primitive for #id #ty #bounds { const NAME: &'static str = #name; const HIDDEN: bool = #hidden; }
 
         impl #imp #c::Behavior for #id #ty #bounds {
             // Always borrow so describing a non-Copy field cannot move it.

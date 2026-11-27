@@ -12,11 +12,7 @@ impl Behavior for Selection {
         out.attr("selected", self.0);
     }
     fn actions(&self) -> Vec<ActionSpec> {
-        vec![ActionSpec {
-            name: "select",
-            doc: "Select.",
-            params: &[],
-        }]
+        vec![ActionSpec::new("select", "Select.", &[])]
     }
     fn is_enabled(&self, action: &str) -> bool {
         action == "select" && !self.0
@@ -125,27 +121,12 @@ fn describe_and_specs() -> Result<(), InvokeError> {
         ]
     );
     assert_eq!(specs[1].doc, "Set the volume (0–100).");
-    assert_eq!(
-        specs[1].params,
-        [ParamSpec {
-            name: "volume",
-            ty: "int",
-            optional: false
-        }]
-    );
+    assert_eq!(specs[1].params, [ParamSpec::new("volume", "int")]);
     assert_eq!(
         specs[3].params,
         [
-            ParamSpec {
-                name: "name",
-                ty: "str",
-                optional: false
-            },
-            ParamSpec {
-                name: "note",
-                ty: "str",
-                optional: true
-            }
+            ParamSpec::new("name", "str"),
+            ParamSpec::new("note", "str").optional()
         ]
     );
     let ui = Ui::new();

@@ -11,7 +11,7 @@ use std::{
 };
 
 const fn action(name: &'static str, doc: &'static str, params: &'static [ParamSpec]) -> ActionSpec {
-    ActionSpec { name, doc, params }
+    ActionSpec::new(name, doc, params)
 }
 struct Mute(bool);
 impl Primitive for Mute {
@@ -27,11 +27,7 @@ impl Behavior for Mute {
             action(
                 "set_volume",
                 "Set volume.",
-                &[ParamSpec {
-                    name: "volume",
-                    ty: "int",
-                    optional: false,
-                }],
+                const { &[ParamSpec::new("volume", "int")] },
             ),
         ]
     }
@@ -62,11 +58,7 @@ impl Behavior for Board {
             action(
                 "move",
                 "Move a piece.",
-                &[ParamSpec {
-                    name: "uci",
-                    ty: "str",
-                    optional: false,
-                }],
+                const { &[ParamSpec::new("uci", "str")] },
             ),
             action("undo", "Undo.", &[]),
         ]
@@ -285,7 +277,11 @@ fn compact_screen_budget() {
         }
     }
     let agent = ui.agent();
-    let snapshot = agent.snapshot();
+    let mut snapshot = agent.snapshot();
+    let ordinary = snapshot.to_string().len();
+    let first = &mut snapshot.components[0].actions[0];
+    *first = first.confirm("Toggle the microphone");
+    assert_eq!(snapshot.to_string().len(), ordinary + 1);
     assert_eq!(snapshot.components.len(), 20);
     assert!(snapshot.to_string().len() < 1400);
     let reply = agent.handle("act @1 toggle");

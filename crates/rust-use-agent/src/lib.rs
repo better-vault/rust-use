@@ -10,6 +10,7 @@ mod parse;
 mod types;
 
 pub use agent::{Agent, UiAgentExt};
+pub use rust_use_core::{Approvals, PendingApproval};
 pub use types::{
     ActError, ActOutcome, Diff, QueryOutcome, Script, Snapshot, SnapshotMore, SnapshotOptions,
     Step, step,

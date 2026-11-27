@@ -95,11 +95,11 @@ assert_eq!(settings.read(|s| s.tabs.is_visible("privacy")), Some(true));
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub use rust_use_core::{
-    ActionError, ActionRequest, ActionSpec, Args, Behavior, ChangeEvent, ChangeKind, ChangeSet,
-    ChangeSource, Combobox, ComponentId, ComponentInfo, Decision, Describe, DragDrop, Field,
-    Handle, InvokeError, Key, List, Orientation, Page, ParamSpec, Popup, Press, Primitive, Query,
-    Range, Ref, ResolveError, RovingFocus, Selection, SelectionMode, Subscription, Tabs, Toggle,
-    Transfer, Tree, TreeRow, Typeahead, Ui, Value,
+    ActionError, ActionRequest, ActionSpec, Approvals, Args, Behavior, ChangeEvent, ChangeKind,
+    ChangeSet, ChangeSource, Combobox, ComponentId, ComponentInfo, Decision, Describe, DragDrop,
+    Field, Handle, InvokeError, Key, List, Orientation, Page, ParamSpec, PendingApproval, Popup,
+    Press, Primitive, Query, Range, Ref, ResolveError, RovingFocus, Selection, SelectionMode,
+    Subscription, Tabs, Toggle, Transfer, Tree, TreeRow, Typeahead, Ui, Value,
 };
 
 #[cfg(feature = "agent")]
@@ -155,10 +155,10 @@ pub mod prelude {
     #[cfg(feature = "mcp")]
     pub use crate::mcp::{Endpoint as McpEndpoint, McpError, McpServer};
     pub use crate::{
-        ActionError, ActionSpec, Args, Behavior, ChangeSource, Combobox, ComponentId, Decision,
-        Describe, DragDrop, Field, Handle, Key, List, Orientation, Page, ParamSpec, Popup, Press,
-        Primitive, Query, Range, Ref, RovingFocus, Selection, SelectionMode, Tabs, Toggle,
-        Transfer, Tree, TreeRow, Typeahead, Ui, Value,
+        ActionError, ActionSpec, Approvals, Args, Behavior, ChangeSource, Combobox, ComponentId,
+        Decision, Describe, DragDrop, Field, Handle, Key, List, Orientation, Page, ParamSpec,
+        PendingApproval, Popup, Press, Primitive, Query, Range, Ref, RovingFocus, Selection,
+        SelectionMode, Tabs, Toggle, Transfer, Tree, TreeRow, Typeahead, Ui, Value,
     };
     #[cfg(feature = "gpui")]
     pub use crate::{HandleExt, UiBinding, UiExt};

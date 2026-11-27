@@ -44,22 +44,15 @@ pub use value::Field;
 use crate::{ActionError, ActionSpec, Args, ParamSpec, Value};
 
 const fn param(name: &'static str, ty: &'static str) -> ParamSpec {
-    ParamSpec {
-        name,
-        ty,
-        optional: false,
-    }
+    ParamSpec::new(name, ty)
 }
 
 const fn param_opt(name: &'static str, ty: &'static str) -> ParamSpec {
-    ParamSpec {
-        optional: true,
-        ..param(name, ty)
-    }
+    param(name, ty).optional()
 }
 
 const fn action(name: &'static str, doc: &'static str, params: &'static [ParamSpec]) -> ActionSpec {
-    ActionSpec { name, doc, params }
+    ActionSpec::new(name, doc, params)
 }
 
 fn dispatch(

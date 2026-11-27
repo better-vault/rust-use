@@ -30,7 +30,7 @@ rev 7
 
 - The first line is `rev <n>`, the `Ui` revision the snapshot reflects.
 - Each component then gets one line, ordered by id:
-  `@<id> <kind> ["<label>"] [=<value>] [<key>=<value> | <flag>]* [!<action>[(<params>)]]* [?query]`.
+  `@<id> <kind> ["<label>"] [=<value>] [<key>=<value> | <flag>]* [(!|!!)<action>[(<params>)]]* [?query]`.
   - `<kind>` is the primitive's `NAME`.
   - The label is quoted and is omitted when the component has none.
   - `=<value>` is the primary value. It is omitted when there is none, or when it is `null`
@@ -38,10 +38,14 @@ rev 7
   - Attributes appear in the order the component wrote them. A flag (`Value::Bool(true)`
     written with `Describe::flag`) is a bare key. An attribute whose value is `false` or
     `null` is omitted entirely.
-  - Only actions that are enabled right now are listed, prefixed with `!`.
+  - Only actions that are enabled right now are listed, prefixed with `!`. Actions requiring a person use
+    `!!`, as in `!!delete(id)`. Verbose docs append ` (needs a person: <text>)`.
+    Structured action descriptions include the prompt in `confirm`.
   - Parameters are `name` when the type is `str`, `name:type` otherwise, and a trailing `?`
     marks an optional one: `!rename_to(name,note?)`, `!set_volume(volume:int)`.
   - `?query` marks a component that answers `query`.
+- Hidden components are omitted from discovery and cannot be addressed. Secret field values
+  are rendered as the string `"[redacted]"`.
 - Values are written as:
   - **strings**: bare when they match `[A-Za-z0-9_./:+-]+` and are not `true`, `false`, `null`
     or numeric-looking; otherwise double-quoted with `\"`, `\\` and `\n` escapes.
@@ -77,7 +81,8 @@ rev 7
 ## Diff
 
 The same lines as a snapshot, for only the components that changed since a revision, plus one
-removal line per unmounted component. The change set is uncapped, including when returned by
+removal line `-@id` when a visible component is hidden or unmounted. Showing a component
+emits its current snapshot line. The change set is uncapped, including when returned by
 `act`.
 
 ```

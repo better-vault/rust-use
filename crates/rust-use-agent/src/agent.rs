@@ -89,7 +89,7 @@ impl Agent {
     ) -> Snapshot {
         loop {
             let revision = self.ui.revision();
-            let mut components = self.ui.components();
+            let mut components = self.ui.components_for(ChangeSource::Agent);
             if revision == self.ui.revision() {
                 components.retain(|c| opts.from.is_none_or(|from| c.id >= from) && matches(c));
                 let more = components.get(opts.limit).map(|next| SnapshotMore {
@@ -125,11 +125,11 @@ impl Agent {
     /// Describe changes after an explicit revision, preserving the cursor.
     pub fn diff_since(&self, revision: u64) -> Diff {
         loop {
-            let delta = self.ui.changes_since(revision);
+            let delta = self.ui.agent_changes_since(revision);
             let changed: Vec<_> = delta
                 .changed
                 .into_iter()
-                .filter_map(|id| self.ui.component(id).ok())
+                .filter_map(|id| self.ui.component_for(id, ChangeSource::Agent).ok())
                 .collect();
             if delta.revision == self.ui.revision() {
                 return Diff {
@@ -142,6 +142,9 @@ impl Agent {
     }
 
     /// Dispatch a batch in order and report changes made during the batch.
+    /// With an approver installed, an action needing a person blocks the calling
+    /// thread. Drive agents from a background thread so the GUI can answer.
+    /// IPC already dispatches on a connection thread.
     ///
     /// # Errors
     /// Returns a parse diagnostic or the failing step with the partial diff.
@@ -215,7 +218,7 @@ impl Agent {
             ..Query::default()
         };
         Ok(QueryOutcome {
-            page: self.ui.query(target, &query)?,
+            page: self.ui.query_for(target, &query, ChangeSource::Agent)?,
         })
     }
 

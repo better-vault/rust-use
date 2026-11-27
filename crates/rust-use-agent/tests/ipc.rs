@@ -20,14 +20,14 @@ impl Behavior for Counter {
         d.value(self.0);
     }
     fn actions(&self) -> Vec<ActionSpec> {
-        vec![ActionSpec {
-            name: "inc",
-            doc: "Increment.",
-            params: &[],
-        }]
+        vec![
+            ActionSpec::new("inc", "Increment.", &[]),
+            ActionSpec::new("confirmed_inc", "Increment with approval.", &[])
+                .confirm("Increment the counter"),
+        ]
     }
     fn invoke(&mut self, action: &str, _: &Args) -> Option<Result<Value, ActionError>> {
-        if action != "inc" {
+        if !matches!(action, "inc" | "confirmed_inc") {
             return None;
         }
         self.0 += 1;
@@ -206,5 +206,26 @@ fn fresh_connection_latency() -> Result<(), IpcError> {
     let mean = start.elapsed() / ITERATIONS;
     eprintln!("Mean connect + snapshot + disconnect: {mean:?}");
     assert!(mean < Duration::from_millis(2), "{mean:?}");
+    Ok(())
+}
+
+#[test]
+fn client_act_waits_for_approval() -> Result<(), Box<dyn std::error::Error>> {
+    let ui = screen();
+    let approvals = rust_use_core::Approvals::new().timeout(Duration::from_secs(5));
+    let _registration = ui.require_approval(&approvals);
+    let (tx, rx) = std::sync::mpsc::channel();
+    let _listener = approvals.on_request(move |r| {
+        let _ = tx.send(r.id);
+    });
+    let server = Server::new(&ui).endpoint(endpoint("approval")?).spawn()?;
+    let mut client = Client::connect(server.endpoint())?;
+    let worker = std::thread::spawn(move || client.request("act counter confirmed_inc"));
+    let id = rx.recv_timeout(Duration::from_secs(3))?;
+    assert!(!worker.is_finished());
+    assert_eq!(ui.component("counter")?.describe.primary(), Some(&0.into()));
+    assert!(approvals.approve(id));
+    let reply = worker.join().map_err(|_| "client thread panicked")??;
+    assert!(reply.starts_with("ok\n=> 1 1"), "{reply}");
     Ok(())
 }

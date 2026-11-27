@@ -68,7 +68,8 @@ pub(crate) fn component(w: &mut impl Write, c: &ComponentInfo, docs: bool) -> fm
         }
     }
     for a in &c.actions {
-        write!(w, " !{}", a.name)?;
+        let prefix = if a.confirm.is_some() { "!!" } else { "!" };
+        write!(w, " {prefix}{}", a.name)?;
         if !a.params.is_empty() {
             w.write_char('(')?;
             for (i, p) in a.params.iter().enumerate() {
@@ -94,6 +95,12 @@ pub(crate) fn component(w: &mut impl Write, c: &ComponentInfo, docs: bool) -> fm
             for line in a.doc.lines() {
                 write!(w, "\n  # {line}")?;
             }
+            if let Some(text) = a.confirm {
+                if a.doc.is_empty() {
+                    w.write_str("\n  #")?;
+                }
+                write!(w, " (needs a person: {text})")?;
+            }
         }
     }
     Ok(())
@@ -110,8 +117,14 @@ pub(crate) fn json_component(c: &ComponentInfo, docs: bool) -> Value {
                 .map(|p| json!({"name":p.name,"type":p.ty,"optional":p.optional}))
                 .collect::<Vec<_>>();
             let mut action = json!({"name":a.name,"params":params});
+            if let Some(text) = a.confirm {
+                action["confirm"] = text.into();
+            }
             if docs {
-                action["doc"] = a.doc.into();
+                action["doc"] = a.confirm.map_or_else(
+                    || a.doc.into(),
+                    |text| format!("{} (needs a person: {text})", a.doc).into(),
+                );
             }
             action
         })

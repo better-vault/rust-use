@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 follows [semantic versioning](https://semver.org/spec/v2.0.0.html). Before 1.0, a minor release
 (0.2.0, 0.3.0) may change the API, and a patch (0.1.1) is a fix that leaves it alone.
 
+## [0.1.1] — 2026-11-27
+
+Documentation only; no code changes.
+
+### Added
+
+- **A README for every crate on crates.io.** `rust-use-core`, `rust-use-macros`, `rust-use-agent`,
+  `rust-use-gpui` and `rust-use-cli` each say what they hold and point to the `rust-use` facade.
+- **A roadmap** ([`ROADMAP.md`](ROADMAP.md)) for the behaviors and adapters planned for 0.2, 0.3
+  and later, summarised in the README.
+
+### Changed
+
+- **The README's race video caption** explains that the rust-use agent batched its moves, and how
+  one call per move compares.
+- **The README names the shipped behaviors** by their types (`Field`, `RovingFocus`, …).
+
 ## [0.1.0] — 2026-11-27
 
 The first release, in beta. rust-use is a library of behaviors for agents to build and drive user
@@ -54,4 +71,5 @@ you depend on), `rust-use-core`, `rust-use-macros`, `rust-use-agent`, `rust-use-
   a wire replay, a Claude Code runner and a side-by-side race video
   ([`bench/`](bench/README.md)).
 
+[0.1.1]: https://github.com/better-vault/rust-use/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/better-vault/rust-use/releases/tag/v0.1.0

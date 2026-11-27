@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/*", "demos/*", "bench"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"
@@ -13,10 +13,10 @@ keywords = ["ui", "agents", "gpui", "mcp", "automation"]
 categories = ["gui", "development-tools"]
 
 [workspace.dependencies]
-rust-use-core = { path = "crates/rust-use-core", version = "0.1.0" }
-rust-use-macros = { path = "crates/rust-use-macros", version = "0.1.0" }
-rust-use-agent = { path = "crates/rust-use-agent", version = "0.1.0" }
-rust-use-gpui = { path = "crates/rust-use-gpui", version = "0.1.0" }
+rust-use-core = { path = "crates/rust-use-core", version = "0.1.1" }
+rust-use-macros = { path = "crates/rust-use-macros", version = "0.1.1" }
+rust-use-agent = { path = "crates/rust-use-agent", version = "0.1.1" }
+rust-use-gpui = { path = "crates/rust-use-gpui", version = "0.1.1" }
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

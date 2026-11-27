@@ -19,6 +19,7 @@
 //! | `macros` | ✓ | [`Primitive`](macro@Primitive) and [`actions`] |
 //! | `agent` | ✓ | the agent bridge: [`agent`] (`snapshot`, `diff`, `act`, `query`, `allow`) |
 //! | `gpui` | | the GPUI adapter, as `rust_use::gpui` |
+//! | `tauri` | | the Tauri plugin, as `rust_use::tauri` |
 //! | `ipc` | | a local socket server and client so out-of-process agents reach a running app |
 //! | `mcp` | | the same three tools served over MCP |
 
@@ -118,6 +119,9 @@ pub use rust_use_gpui as gpui;
 #[cfg(feature = "gpui")]
 pub use rust_use_gpui::{HandleExt, UiBinding, UiExt};
 
+#[cfg(feature = "tauri")]
+pub use rust_use_tauri::{self as tauri, PluginBuilder};
+
 #[doc(hidden)]
 pub mod __private {
     pub use rust_use_core as core;
@@ -147,6 +151,8 @@ pub use rust_use_macros::{Primitive, actions};
 
 pub mod prelude {
     //! Common imports for applications using `rust-use`.
+    #[cfg(feature = "tauri")]
+    pub use crate::PluginBuilder;
     #[cfg(feature = "macros")]
     pub use crate::actions;
     #[cfg(feature = "ipc")]

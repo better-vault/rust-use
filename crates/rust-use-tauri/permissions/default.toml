@@ -1,0 +1,3 @@
+[default]
+description = "Read snapshots, query options and invoke user or agent actions."
+permissions = ["allow-snapshot", "allow-snapshot-json", "allow-act", "allow-invoke", "allow-query"]

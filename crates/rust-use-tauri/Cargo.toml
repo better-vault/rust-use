@@ -1,0 +1,32 @@
+[package]
+name = "rust-use-tauri"
+links = "tauri-plugin-rust-use"
+version.workspace = true
+edition.workspace = true
+rust-version = "1.90" # Tauri 2.12 requires Rust 1.90.
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+description = "Serve rust-use state and actions to Tauri webviews and agents."
+
+[features]
+ipc = ["rust-use-agent/ipc"]
+
+[dependencies]
+rust-use-core.workspace = true
+rust-use-agent.workspace = true
+serde_json.workspace = true
+tauri = { version = "2.12", default-features = false }
+
+[dev-dependencies]
+rust-use-macros.workspace = true
+tauri = { version = "2.12", default-features = false, features = ["test"] }
+
+[build-dependencies]
+tauri-plugin = { version = "2", default-features = false, features = ["build"] }
+
+[lints]
+workspace = true

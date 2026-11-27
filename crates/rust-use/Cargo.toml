@@ -11,6 +11,10 @@ categories.workspace = true
 description = "A library of behaviors for agents to build and drive the next generation of user interfaces."
 readme = "../../README.md"
 
+# With the `tauri` feature, build.rs forwards rust-use-tauri's permission files under this links
+# name, so tauri-build registers the plugin's permissions for apps that depend on the facade alone.
+links = "rust-use"
+
 [lib]
 name = "rust_use"
 
@@ -25,12 +29,15 @@ rust-use-macros = { workspace = true, optional = true }
 rust-use-agent = { workspace = true, optional = true }
 rust-use-gpui = { workspace = true, optional = true }
 
+rust-use-tauri = { workspace = true, optional = true }
+
 [features]
 default = ["macros", "agent"]
 macros = ["dep:rust-use-macros"]
 agent = ["dep:rust-use-agent"]
 gpui = ["agent", "macros", "dep:gpui", "dep:rust-use-gpui"]
-ipc = ["agent", "rust-use-agent/ipc"]
+tauri = ["agent", "dep:rust-use-tauri"]
+ipc = ["agent", "rust-use-agent/ipc", "rust-use-tauri?/ipc"]
 mcp = ["agent", "rust-use-agent/mcp"]
 
 [[example]]

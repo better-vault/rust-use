@@ -139,9 +139,9 @@ component's own.
 
 | Release | Behaviors | Also |
 | --- | --- | --- |
-| **0.2** | `Reorder`, `Tree`, `Range`, `Combobox`, `Tabs` | a Tauri adapter, atomic `act` |
-| **0.3** | `TextInput`, `Dialog`, `Menu`, `Viewport`, `Resize`, `Toast` | `observe`: changes pushed to agents |
-| **Later** | `Canvas`, `Calendar`, `Form`, `History`, `Shortcuts`, `Clipboard` | more adapters, hardware, 1.0 |
+| **0.2** | `Reorder`, `Tree`, `Range`, `Combobox`, `Tabs` | agent safety (secrets, hidden parts, actions that need a person), a Tauri adapter, atomic `act` |
+| **0.3** | `TextInput`, `InlineEdit`, `Dialog`, `Menu`, `Viewport`, `Resize`, `Toast` | undo for agent changes, smarter refs, `observe`, a testing kit |
+| **Later** | `Canvas`, `CellRange`, `Calendar`, `Area`, `Form`, `Shortcuts`, `Clipboard` | a GPUI component kit, a model inside the app, more adapters, hardware, 1.0 |
 
 Every one is operated by an agent in a single direct action, such as `reorder 3 0` or `expand "src"`.
 See **[ROADMAP.md](ROADMAP.md)** for what each will do, and
@@ -164,6 +164,82 @@ It can connect three ways:
 - **CLI over a local socket**: `rust-use snapshot`, `rust-use act "board move e2e4"`. Any coding
   agent that can run a shell command can use it, including Claude Code, Codex and Cursor.
 - **MCP**: `rust-use mcp` serves the same tools to any MCP client.
+
+## Adding rust-use to an existing GPUI app
+
+You don't rewrite your app. You move the state an agent should be able to operate into
+primitives, one component at a time, and your views keep rendering as they do today.
+
+```sh
+cargo add rust-use --features gpui,ipc
+```
+
+**1. Make the state a primitive.** The struct your view already keeps becomes the primitive, and
+the methods your click handlers call become actions:
+
+```rust
+use rust_use::prelude::*;
+
+/// The playlist in the sidebar.
+#[derive(Primitive)]
+struct Playlist {
+    #[agent(value)]
+    playing: Option<String>,
+    #[behavior]
+    tracks: List<String>,
+}
+
+#[actions]
+impl Playlist {
+    /// Play a track by title.
+    fn play(&mut self, title: String) -> Result<(), ActionError> {
+        if !self.tracks.iter().any(|t| *t == title) {
+            return Err(ActionError::Rejected(format!("no track named {title}")));
+        }
+        self.playing = Some(title);
+        Ok(())
+    }
+}
+```
+
+**2. Mount it, and keep the view in sync.** Hold one `Ui` for the app. In the view, keep the
+handle, bind to the `Ui` so the view re-renders on every change from any source, and read state in
+`render`:
+
+```rust
+let ui = Ui::new();
+let playlist = ui
+    .mount(Playlist { playing: None, tracks: List::new(tracks) })
+    .label("Playlist");
+
+// In your view's constructor: re-render whenever an agent (or anything else) changes the Ui.
+let binding = ui.bind(cx);
+
+// In render: read state through the handle, and send input through the same actions an agent uses.
+let playing = playlist.read(|p| p.playing.clone()).flatten();
+div().id("play").on_click(playlist.on_click("play", ("Intro",)))
+```
+
+**3. Let agents in.** Serve the `Ui` over the local socket when the app starts. Use `allow` to
+say what an agent may do:
+
+```rust
+let _server = Server::new(&ui)
+    .endpoint(Endpoint::new("my-app")?)
+    .allow(|request| request.action != "delete")
+    .spawn()?;
+```
+
+From then on, `rust-use --app my-app snapshot` shows the playlist to any agent, and `rust-use --app
+my-app mcp` serves it to MCP clients.
+
+> [!NOTE]
+> **Which gpui?** `rust-use-gpui` depends on [`gpui` from crates.io](https://crates.io/crates/gpui)
+> (0.2). Many GPUI apps, Zed included, use gpui from Zed's git repository instead, and two gpui
+> versions in one build don't mix. If your app is on git gpui, point both at the same source with
+> a `[patch.crates-io]` entry for `gpui` in your workspace `Cargo.toml`. Or skip the `gpui`
+> feature: `rust-use` itself has no UI dependency, and `ui.subscribe(..)` plus your own
+> `cx.notify()` is all the adapter does.
 
 ## Benchmark
 

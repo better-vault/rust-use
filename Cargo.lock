@@ -4871,7 +4871,6 @@ dependencies = [
 name = "rust-use-core"
 version = "0.1.1"
 dependencies = [
- "rust-use-macros",
  "serde",
  "serde_json",
  "thiserror 2.0.21",

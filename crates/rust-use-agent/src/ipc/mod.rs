@@ -7,8 +7,11 @@
 //! named `rust-use-<name>`.
 
 mod client;
+
 mod endpoint;
+
 mod frame;
+
 mod server;
 
 pub use client::Client;

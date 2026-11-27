@@ -10,6 +10,8 @@ keywords.workspace = true
 categories.workspace = true
 readme = "README.md"
 description = "Derive and attribute macros for rust-use."
+# The trybuild tests need the path-only rust-use-core dev-dependency stripped by cargo package.
+exclude = ["tests/*"]
 
 [lib]
 proc-macro = true

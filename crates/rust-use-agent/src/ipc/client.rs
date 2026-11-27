@@ -18,6 +18,7 @@ impl Client {
             stream: Stream::connect(endpoint.address()?)?,
         })
     }
+
     /// Connect to the only discoverable app.
     ///
     /// # Errors
@@ -31,6 +32,7 @@ impl Client {
             )),
         }
     }
+
     /// The app selected at connection time.
     pub fn endpoint(&self) -> &Endpoint {
         &self.endpoint

@@ -21,23 +21,28 @@ use crate::{
 /// Stable numeric component identifier, displayed as `@1`, `@2`, etc.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ComponentId(u32);
+
 impl ComponentId {
     /// Return the numeric identifier.
     pub fn get(self) -> u32 {
         self.0
     }
 }
+
 impl fmt::Display for ComponentId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "@{}", self.0)
     }
 }
+
 impl FromStr for ComponentId {
     type Err = ParseIntError;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.strip_prefix('@').unwrap_or(s).parse().map(Self)
     }
 }
+
 /// Component address resolved within a single registry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ref {
@@ -46,11 +51,13 @@ pub enum Ref {
     /// Match exact label, case-insensitive label, then primitive kind.
     Label(String),
 }
+
 impl From<ComponentId> for Ref {
     fn from(id: ComponentId) -> Self {
         Self::Id(id)
     }
 }
+
 impl From<String> for Ref {
     fn from(s: String) -> Self {
         if s.starts_with('@')
@@ -61,11 +68,13 @@ impl From<String> for Ref {
         Self::Label(s)
     }
 }
+
 impl From<&str> for Ref {
     fn from(s: &str) -> Self {
         s.to_owned().into()
     }
 }
+
 /// Agent-visible snapshot of one component.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentInfo {
@@ -84,6 +93,7 @@ pub struct ComponentInfo {
     /// Whether the component supports queries.
     pub queryable: bool,
 }
+
 /// Notification of a committed change.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ChangeEvent {
@@ -96,6 +106,7 @@ pub struct ChangeEvent {
     /// Operation performed.
     pub kind: ChangeKind,
 }
+
 /// Operation that advanced the registry revision.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ChangeKind {
@@ -110,6 +121,7 @@ pub enum ChangeKind {
     /// The label was set.
     Relabeled,
 }
+
 /// Components affected since a given revision.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ChangeSet {
@@ -129,21 +141,26 @@ trait Erased: Behavior {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
+
 impl<P: Primitive> Erased for P {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 }
+
 type Cell = Arc<Mutex<Box<dyn Erased>>>;
+
 struct Entry {
     name: &'static str,
     label: Option<String>,
     revision: u64,
     cell: Cell,
 }
+
 #[derive(Default)]
 struct Registry {
     entries: BTreeMap<ComponentId, Entry>,
@@ -151,6 +168,7 @@ struct Registry {
     revision: u64,
     removed: VecDeque<(ComponentId, u64)>,
 }
+
 impl Registry {
     fn event(&mut self, id: ComponentId, kind: ChangeKind, source: ChangeSource) -> ChangeEvent {
         self.revision += 1;
@@ -164,6 +182,7 @@ impl Registry {
             revision: self.revision,
         }
     }
+
     fn resolve(&self, r: Ref) -> Result<ComponentId, ResolveError> {
         let query = match r {
             Ref::Id(id) => {
@@ -196,19 +215,24 @@ impl Registry {
         Err(ResolveError::NotFound(query))
     }
 }
+
 fn missing(id: ComponentId) -> ResolveError {
     ResolveError::NotFound(id.to_string())
 }
 
 type Hooks<F> = Arc<Mutex<Vec<Arc<F>>>>;
+
 type Interceptor = dyn Fn(&ActionRequest<'_>) -> Decision + Send + Sync;
+
 type Subscriber = dyn Fn(&ChangeEvent) + Send + Sync;
+
 struct Inner {
     session: u64,
     state: Mutex<Registry>,
     interceptors: Hooks<Interceptor>,
     subscribers: Hooks<Subscriber>,
 }
+
 impl Default for Inner {
     fn default() -> Self {
         static COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -227,6 +251,7 @@ impl Default for Inner {
         }
     }
 }
+
 /// Thread-safe registry shared by all its clones.
 ///
 /// ```
@@ -243,11 +268,13 @@ impl Default for Inner {
 pub struct Ui {
     inner: Arc<Inner>,
 }
+
 impl Ui {
     /// Create an empty registry at revision zero.
     pub fn new() -> Self {
         Self::default()
     }
+
     /// Mount a primitive and return a typed handle.
     ///
     /// # Panics
@@ -284,16 +311,19 @@ impl Ui {
             marker: PhantomData,
         }
     }
+
     /// Return the nonzero session id assigned to this registry at creation.
     ///
     /// It identifies one `Ui` instance and is shared by its clones. It carries no user identity.
     pub fn session(&self) -> u64 {
         self.inner.session
     }
+
     /// Read the latest global revision.
     pub fn revision(&self) -> u64 {
         lock(&self.inner.state).revision
     }
+
     /// Describe mounted components in ascending id order.
     pub fn components(&self) -> Vec<ComponentInfo> {
         let ids: Vec<_> = lock(&self.inner.state).entries.keys().copied().collect();
@@ -301,11 +331,13 @@ impl Ui {
             .filter_map(|id| self.component(id).ok())
             .collect()
     }
+
     fn target(&self, r: Ref) -> Result<(ComponentId, Cell), ResolveError> {
         let state = lock(&self.inner.state);
         let id = state.resolve(r)?;
         Ok((id, state.entries[&id].cell.clone()))
     }
+
     /// Describe one mounted component and its enabled actions.
     ///
     /// # Errors
@@ -330,6 +362,7 @@ impl Ui {
             queryable: guard.queryable(),
         })
     }
+
     /// Resolve a component id, label, or kind.
     ///
     /// # Errors
@@ -337,6 +370,7 @@ impl Ui {
     pub fn resolve(&self, r: impl Into<Ref>) -> Result<ComponentId, ResolveError> {
         lock(&self.inner.state).resolve(r.into())
     }
+
     /// Collect changed ids and retained removals after a revision.
     pub fn changes_since(&self, revision: u64) -> ChangeSet {
         let state = lock(&self.inner.state);
@@ -356,6 +390,7 @@ impl Ui {
                 .collect(),
         }
     }
+
     /// Dispatch an enabled action after applying registered interceptors.
     ///
     /// # Errors
@@ -428,6 +463,7 @@ impl Ui {
         self.notify(&event);
         Ok(result)
     }
+
     /// Query a component's optional paginated list.
     ///
     /// # Errors
@@ -438,6 +474,7 @@ impl Ui {
         self.resolve(id)?;
         Ok(guard.query(query))
     }
+
     /// Register a veto hook for every source, in registration order.
     pub fn intercept(
         &self,
@@ -445,10 +482,12 @@ impl Ui {
     ) -> Subscription {
         register(&self.inner.interceptors, Arc::new(f))
     }
+
     /// Subscribe to committed changes.
     pub fn subscribe(&self, f: impl Fn(&ChangeEvent) + Send + Sync + 'static) -> Subscription {
         register(&self.inner.subscribers, Arc::new(f))
     }
+
     fn notify(&self, event: &ChangeEvent) {
         let hooks = lock(&self.inner.subscribers).clone();
         for hook in hooks {
@@ -456,12 +495,14 @@ impl Ui {
         }
     }
 }
+
 fn enabled(p: &dyn Erased) -> Vec<ActionSpec> {
     p.actions()
         .into_iter()
         .filter(|a| p.is_enabled(a.name))
         .collect()
 }
+
 fn unknown(p: &dyn Erased, name: &str, action: &str) -> InvokeError {
     InvokeError::UnknownAction {
         component: name.into(),
@@ -473,6 +514,7 @@ fn unknown(p: &dyn Erased, name: &str, action: &str) -> InvokeError {
             .join(","),
     }
 }
+
 fn check_action(p: &dyn Erased, name: &str, action: &str) -> Result<(), InvokeError> {
     if !p.owns(action) {
         return Err(unknown(p, name, action));
@@ -489,6 +531,7 @@ pub struct Handle<P: Primitive> {
     id: ComponentId,
     marker: PhantomData<fn() -> P>,
 }
+
 impl<P: Primitive> Clone for Handle<P> {
     fn clone(&self) -> Self {
         Self {
@@ -498,15 +541,18 @@ impl<P: Primitive> Clone for Handle<P> {
         }
     }
 }
+
 impl<P: Primitive> Handle<P> {
     /// Stable component id.
     pub fn id(&self) -> ComponentId {
         self.id
     }
+
     /// Registry owning the component.
     pub fn ui(&self) -> &Ui {
         &self.ui
     }
+
     /// Set the human label and return the handle.
     ///
     /// Not `#[must_use]`: `ui.mount(x).label("Mute");` without keeping the handle is a normal way
@@ -516,6 +562,7 @@ impl<P: Primitive> Handle<P> {
         self.set_label(label);
         self
     }
+
     /// Set the human label and emit a relabel event if mounted.
     pub fn set_label(&self, label: impl Into<String>) {
         let label = label.into();
@@ -528,6 +575,7 @@ impl<P: Primitive> Handle<P> {
         drop(state);
         self.ui.notify(&event);
     }
+
     /// Read under the component lock, returning `None` after unmount.
     pub fn read<R>(&self, f: impl FnOnce(&P) -> R) -> Option<R> {
         let (_, cell) = self.ui.target(self.id.into()).ok()?;
@@ -535,6 +583,7 @@ impl<P: Primitive> Handle<P> {
         self.ui.resolve(self.id).ok()?;
         Some(f(guard.as_any().downcast_ref()?))
     }
+
     /// Mutate directly under the component lock and report an update.
     pub fn update<R>(&self, source: ChangeSource, f: impl FnOnce(&mut P) -> R) -> Option<R> {
         let (_, cell) = self.ui.target(self.id.into()).ok()?;
@@ -546,6 +595,7 @@ impl<P: Primitive> Handle<P> {
         self.ui.notify(&event);
         Some(result)
     }
+
     /// Dispatch a named action through the owning registry.
     ///
     /// # Errors
@@ -558,6 +608,7 @@ impl<P: Primitive> Handle<P> {
     ) -> Result<Value, InvokeError> {
         self.ui.invoke(self.id, action, args, source)
     }
+
     /// Remove the component, invalidating all its handles.
     pub fn unmount(self) {
         let Ok((_, cell)) = self.ui.target(self.id.into()) else {
@@ -577,6 +628,7 @@ impl<P: Primitive> Handle<P> {
         drop(guard);
         self.ui.notify(&event);
     }
+
     /// Whether the component is still mounted.
     pub fn is_mounted(&self) -> bool {
         self.ui.resolve(self.id).is_ok()
@@ -588,12 +640,14 @@ impl<P: Primitive> Handle<P> {
 pub struct Subscription {
     unregister: Option<Box<dyn FnOnce() + Send + Sync>>,
 }
+
 impl Subscription {
     /// Leave the callback registered for the registry's lifetime.
     pub fn detach(mut self) {
         self.unregister = None;
     }
 }
+
 impl Drop for Subscription {
     fn drop(&mut self) {
         if let Some(f) = self.unregister.take() {
@@ -601,6 +655,7 @@ impl Drop for Subscription {
         }
     }
 }
+
 fn register<F: ?Sized + Send + Sync + 'static>(hooks: &Hooks<F>, f: Arc<F>) -> Subscription {
     lock(hooks).push(f.clone());
     let hooks = Arc::downgrade(hooks);

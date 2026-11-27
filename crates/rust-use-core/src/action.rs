@@ -58,6 +58,7 @@ pub enum Decision {
     /// Stop dispatch with this reason.
     Deny(String),
 }
+
 impl From<bool> for Decision {
     fn from(allow: bool) -> Self {
         if allow {

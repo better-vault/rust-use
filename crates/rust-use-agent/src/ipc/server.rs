@@ -27,7 +27,9 @@ pub struct RequestLog<'a> {
 }
 
 type Handler = Box<dyn Fn(&str) -> String + Send + Sync>;
+
 type Observer = Box<dyn Fn(&RequestLog<'_>) + Send + Sync>;
+
 type Predicate = Box<dyn Fn(&ActionRequest<'_>) -> bool + Send + Sync>;
 
 /// Builder for a background local IPC server.
@@ -51,11 +53,13 @@ impl Server {
             observer: None,
         }
     }
+
     /// Select an explicit endpoint.
     pub fn endpoint(mut self, endpoint: Endpoint) -> Self {
         self.endpoint = endpoint;
         self
     }
+
     /// Register a first-word command. The handler receives the remaining text.
     pub fn command(
         mut self,
@@ -65,16 +69,19 @@ impl Server {
         self.commands.insert(name, Box::new(handler));
         self
     }
+
     /// Require the predicate for agent-originated actions on the registry while serving.
     pub fn allow(mut self, f: impl Fn(&ActionRequest<'_>) -> bool + Send + Sync + 'static) -> Self {
         self.predicates.push(Box::new(f));
         self
     }
+
     /// Observe each reply after writing it to the connection.
     pub fn observe(mut self, f: impl Fn(&RequestLog<'_>) + Send + Sync + 'static) -> Self {
         self.observer = Some(Box::new(f));
         self
     }
+
     /// Bind the endpoint and begin accepting connections on a background thread.
     ///
     /// # Errors
@@ -178,12 +185,14 @@ pub struct ServerGuard {
     state: Arc<State>,
     accept: Option<thread::JoinHandle<()>>,
 }
+
 impl ServerGuard {
     /// Endpoint bound by the listener.
     pub fn endpoint(&self) -> &Endpoint {
         &self.endpoint
     }
 }
+
 impl Drop for ServerGuard {
     fn drop(&mut self) {
         self.state.stopped.store(true, Ordering::Release);

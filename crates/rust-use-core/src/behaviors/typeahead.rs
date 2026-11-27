@@ -16,11 +16,13 @@ pub struct Typeahead {
     matched: Option<usize>,
     timeout: Duration,
 }
+
 impl Default for Typeahead {
     fn default() -> Self {
         Self::new(Duration::from_millis(500))
     }
 }
+
 impl Typeahead {
     /// Start an empty search with the specified inactivity timeout.
     pub fn new(timeout: Duration) -> Self {
@@ -31,6 +33,7 @@ impl Typeahead {
             timeout,
         }
     }
+
     /// Search labels in display order. Repeating a single character cycles through matches.
     pub fn push_char(&mut self, c: char, now: Instant, labels: &[&str]) -> Option<usize> {
         if self
@@ -55,9 +58,11 @@ impl Typeahead {
         self.matched
     }
 }
+
 impl Behavior for Typeahead {
     fn describe(&self, _: &mut Describe) {}
 }
+
 #[test]
 fn cycles_then_resets() {
     let mut t = Typeahead::default();

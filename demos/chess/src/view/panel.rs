@@ -18,6 +18,7 @@ fn card() -> Div {
         .bg(rgb(CARD))
         .rounded_lg()
 }
+
 fn heading(label: &'static str) -> Div {
     div()
         .text_sm()

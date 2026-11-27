@@ -102,10 +102,12 @@ struct Snapshot {
     from: Option<String>,
     limit: Option<usize>,
 }
+
 #[derive(Deserialize, JsonSchema)]
 struct Act {
     script: String,
 }
+
 #[derive(Deserialize, JsonSchema)]
 struct Query {
     r#ref: String,

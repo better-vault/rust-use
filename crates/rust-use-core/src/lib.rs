@@ -4,11 +4,17 @@
 #![deny(missing_docs)]
 
 mod action;
+
 mod behavior;
+
 mod behaviors;
+
 mod describe;
+
 mod error;
+
 mod ui;
+
 mod value;
 
 pub use action::{ActionRequest, ActionSpec, ChangeSource, Decision, ParamSpec};
@@ -35,6 +41,7 @@ pub mod __private {
     )]
     pub trait OwnActions {
         const ACTIONS: &'static [ActionSpec];
+
         fn own_is_enabled(&self, action: &str) -> Option<bool>;
         fn own_invoke(&mut self, action: &str, args: &Args) -> Option<Result<Value, ActionError>>;
     }

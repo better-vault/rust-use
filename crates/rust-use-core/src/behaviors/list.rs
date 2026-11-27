@@ -19,6 +19,7 @@ pub struct List<T> {
     /// Optional predicate receiving the original query text.
     pub filter: Option<Filter<T>>,
 }
+
 impl<T: fmt::Debug> fmt::Debug for List<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("List")
@@ -26,11 +27,13 @@ impl<T: fmt::Debug> fmt::Debug for List<T> {
             .finish_non_exhaustive()
     }
 }
+
 impl<T> Default for List<T> {
     fn default() -> Self {
         Self::new(Vec::new())
     }
 }
+
 impl<T> List<T> {
     /// Create a list in display order.
     pub fn new(items: Vec<T>) -> Self {
@@ -39,20 +42,24 @@ impl<T> List<T> {
             filter: None,
         }
     }
+
     /// Install a custom text filter.
     #[must_use]
     pub fn with_filter(mut self, f: impl Fn(&T, &str) -> bool + Send + 'static) -> Self {
         self.filter = Some(Box::new(f));
         self
     }
+
     /// Append an item.
     pub fn push(&mut self, item: T) {
         self.items.push(item);
     }
+
     /// Remove the item at an index, if present.
     pub fn remove(&mut self, i: usize) -> Option<T> {
         (i < self.len()).then(|| self.items.remove(i))
     }
+
     /// Move an item to its final index.
     /// # Errors
     /// Returns a rejection if either index is out of bounds.
@@ -64,49 +71,62 @@ impl<T> List<T> {
         self.items.insert(to, item);
         Ok(())
     }
+
     /// Number of items.
     pub fn len(&self) -> usize {
         self.items.len()
     }
+
     /// Whether there are no items.
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
+
     /// Iterate items in display order.
     pub fn iter(&self) -> std::slice::Iter<'_, T> {
         self.items.iter()
     }
 }
+
 impl<'a, T> IntoIterator for &'a List<T> {
     type Item = &'a T;
+
     type IntoIter = std::slice::Iter<'a, T>;
+
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
+
 const ACTIONS: [ActionSpec; 1] = [action(
     "move",
     "Reorder an item.",
     &[param("from", "int"), param("to", "int")],
 )];
+
 impl<T: Serialize + Send + 'static> Behavior for List<T> {
     fn describe(&self, out: &mut Describe) {
         out.attr("n", self.len());
     }
+
     fn actions(&self) -> Vec<ActionSpec> {
         ACTIONS.to_vec()
     }
+
     fn owns(&self, action: &str) -> bool {
         ACTIONS.iter().any(|a| a.name == action)
     }
+
     fn invoke(&mut self, name: &str, args: &Args) -> Option<Result<Value, ActionError>> {
         dispatch(&ACTIONS, name, args, || {
             self.move_item(args.get(0, "from")?, args.get(1, "to")?)
         })
     }
+
     fn queryable(&self) -> bool {
         true
     }
+
     fn query(&self, q: &Query) -> Option<Page> {
         let Some(text) = q.text.as_deref() else {
             // Custom filters only apply when the caller supplies text.
@@ -141,6 +161,7 @@ impl<T: Serialize + Send + 'static> Behavior for List<T> {
         Some(Page::from_iter(items, q))
     }
 }
+
 #[test]
 fn bounds_are_atomic() {
     let mut list = List::new(vec![0, 1]);
@@ -155,6 +176,7 @@ fn unfiltered_query_serializes_only_the_page() {
     use std::cell::Cell;
 
     struct Item(u64, Cell<usize>);
+
     impl Serialize for Item {
         fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
             self.1.set(self.1.get() + 1);

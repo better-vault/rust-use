@@ -135,28 +135,35 @@ pub(super) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
     let empty = opts.no_actions.then(|| quote! {
         impl #imp #own for #id #ty #bounds {
             const ACTIONS: &'static [#c::ActionSpec] = &[];
+
             fn own_is_enabled(&self, _: &str) -> ::core::option::Option<bool> { None }
+
             fn own_invoke(&mut self, _: &str, _: &#c::Args) -> ::core::option::Option<::core::result::Result<#c::Value, #c::ActionError>> { None }
         }
     });
     Ok(quote! {
         #empty
+
         impl #imp #c::Primitive for #id #ty #bounds { const NAME: &'static str = #name; }
+
         impl #imp #c::Behavior for #id #ty #bounds {
             // Always borrow so describing a non-Copy field cannot move it.
             #[allow(clippy::needless_borrows_for_generic_args)]
             fn describe(&self, out: &mut #c::Describe) {
                 #(#fields)* #(#c::Behavior::describe(&self.#behaviors,out);)*
             }
+
             fn actions(&self) -> ::std::vec::Vec<#c::ActionSpec> {
                 let mut specs = <Self as #own>::ACTIONS.to_vec();
                 #(specs.extend(#c::Behavior::actions(&self.#behaviors));)*
                 specs
             }
+
             fn owns(&self, action: &str) -> bool {
                 <Self as #own>::ACTIONS.iter().any(|s| s.name == action)
                     #(|| #c::Behavior::owns(&self.#behaviors, action))*
             }
+
             fn is_enabled(&self, action: &str) -> bool {
                 if let Some(enabled) = #own::own_is_enabled(self, action) { return enabled; }
                 #(if #c::Behavior::owns(&self.#behaviors, action) {
@@ -164,12 +171,15 @@ pub(super) fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
                 })*
                 false
             }
+
             fn invoke(&mut self, action: &str, args:  &#c::Args) -> ::core::option::Option<::core::result::Result<#c::Value, #c::ActionError>> {
                 #own::own_invoke(self,action,args) #(.or_else(|| #c::Behavior::invoke(&mut self.#behaviors,action,args)))*
             }
+
             fn queryable(&self) -> bool {
                 false #(|| #c::Behavior::queryable(&self.#behaviors))*
             }
+
             fn query(&self, query: &#c::Query) -> ::core::option::Option<#c::Page> {
                 None #(.or_else(|| #c::Behavior::query(&self.#behaviors,query)))*
             }

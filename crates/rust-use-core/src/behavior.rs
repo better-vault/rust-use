@@ -13,10 +13,12 @@ use crate::{ActionError, ActionSpec, Args, Describe, Value};
 pub trait Behavior: Send + 'static {
     /// Write agent-visible state.
     fn describe(&self, out: &mut Describe);
+
     /// List all declared actions, including disabled ones.
     fn actions(&self) -> Vec<ActionSpec> {
         Vec::new()
     }
+
     /// Whether this behavior declares `action`, including when the action is disabled.
     /// The default scans [`Behavior::actions`]. Override this when the names can be checked
     /// without allocating.
@@ -30,14 +32,17 @@ pub trait Behavior: Send + 'static {
     fn owns(&self, action: &str) -> bool {
         self.actions().iter().any(|a| a.name == action)
     }
+
     /// Check whether a declared action is currently available.
     fn is_enabled(&self, _action: &str) -> bool {
         true
     }
+
     /// Run an owned action or return `None` to allow composite dispatch to continue.
     fn invoke(&mut self, _action: &str, _args: &Args) -> Option<Result<Value, ActionError>> {
         None
     }
+
     /// Whether this behavior supports [`Behavior::query`]. Defaults to `false`.
     /// Query implementations that return a page should advertise support here without doing
     /// any search or pagination, since this is checked on every snapshot.
@@ -50,6 +55,7 @@ pub trait Behavior: Send + 'static {
     fn queryable(&self) -> bool {
         false
     }
+
     /// Search an option list, returning `None` for non-queryable behaviors.
     fn query(&self, _query: &Query) -> Option<Page> {
         None
@@ -72,6 +78,7 @@ pub struct Query {
     /// Requested page size, defaulting to and capped at 50.
     pub limit: usize,
 }
+
 impl Query {
     /// Return the bounded, nonzero page size.
     pub fn effective_limit(&self) -> usize {
@@ -82,6 +89,7 @@ impl Query {
         }
     }
 }
+
 /// Page of matching options.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Page {
@@ -92,6 +100,7 @@ pub struct Page {
     /// Offset of the next page when more values exist.
     pub next: Option<usize>,
 }
+
 impl Page {
     /// Paginate already-filtered values in a single pass.
     pub fn from_iter<I: IntoIterator<Item = Value>>(items: I, query: &Query) -> Self {

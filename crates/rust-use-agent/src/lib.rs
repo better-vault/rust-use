@@ -2,8 +2,11 @@
 //! Most users should depend on the `rust-use` facade with the `agent` feature.
 
 mod agent;
+
 mod format;
+
 mod parse;
+
 mod types;
 
 pub use agent::{Agent, UiAgentExt};
@@ -14,5 +17,6 @@ pub use types::{
 
 #[cfg(feature = "ipc")]
 pub mod ipc;
+
 #[cfg(feature = "mcp")]
 pub mod mcp;

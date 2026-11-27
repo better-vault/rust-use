@@ -1,11 +1,19 @@
 mod drag_drop;
+
 mod list;
+
 mod popup;
+
 mod press;
+
 mod roving_focus;
+
 mod selection;
+
 mod toggle;
+
 mod typeahead;
+
 mod value;
 
 pub use drag_drop::DragDrop;
@@ -27,6 +35,7 @@ const fn param(name: &'static str, ty: &'static str) -> ParamSpec {
         optional: false,
     }
 }
+
 const fn action(name: &'static str, doc: &'static str, params: &'static [ParamSpec]) -> ActionSpec {
     ActionSpec { name, doc, params }
 }

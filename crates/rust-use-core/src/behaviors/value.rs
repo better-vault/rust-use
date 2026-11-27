@@ -18,6 +18,7 @@ pub struct Field<T> {
     value: T,
     validator: Option<Validator<T>>,
 }
+
 impl<T> Field<T> {
     /// Store an initial value.
     pub fn new(value: T) -> Self {
@@ -26,16 +27,19 @@ impl<T> Field<T> {
             validator: None,
         }
     }
+
     /// Check subsequent assignments with this function.
     #[must_use]
     pub fn with_validator(mut self, validator: Validator<T>) -> Self {
         self.validator = Some(validator);
         self
     }
+
     /// Borrow the stored value.
     pub fn get(&self) -> &T {
         &self.value
     }
+
     /// Assign a value after validation.
     /// # Errors
     /// Returns the validator's rejection and preserves the previous value on failure.
@@ -47,17 +51,22 @@ impl<T> Field<T> {
         Ok(())
     }
 }
+
 const ACTIONS: [ActionSpec; 1] = [action("set", "Assign a value.", &[param("value", "any")])];
+
 impl<T: Serialize + DeserializeOwned + Clone + Send + 'static> Behavior for Field<T> {
     fn describe(&self, out: &mut Describe) {
         out.value(&self.value);
     }
+
     fn actions(&self) -> Vec<ActionSpec> {
         ACTIONS.to_vec()
     }
+
     fn owns(&self, action: &str) -> bool {
         ACTIONS.iter().any(|a| a.name == action)
     }
+
     fn invoke(&mut self, name: &str, args: &Args) -> Option<Result<Value, ActionError>> {
         dispatch(&ACTIONS, name, args, || self.set(args.get(0, "value")?))
     }

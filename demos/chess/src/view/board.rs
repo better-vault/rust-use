@@ -24,9 +24,11 @@ macro_rules! pieces {
         ]
     }
 }
+
 const ASSETS: &[(&str, &[u8])] = pieces!(
     "wP", "wB", "wN", "wR", "wQ", "wK", "bP", "bB", "bN", "bR", "bQ", "bK"
 );
+
 impl AssetSource for Pieces {
     fn load(&self, path: &str) -> gpui::Result<Option<Cow<'static, [u8]>>> {
         Ok(ASSETS
@@ -34,6 +36,7 @@ impl AssetSource for Pieces {
             .find(|(name, _)| *name == path)
             .map(|(_, bytes)| Cow::Borrowed(*bytes)))
     }
+
     fn list(&self, path: &str) -> gpui::Result<Vec<SharedString>> {
         Ok(ASSETS
             .iter()

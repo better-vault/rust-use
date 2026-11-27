@@ -16,6 +16,7 @@ pub struct Press {
     pressed: bool,
     handler: Option<Box<dyn FnMut() + Send>>,
 }
+
 impl fmt::Debug for Press {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Press")
@@ -24,17 +25,20 @@ impl fmt::Debug for Press {
             .finish_non_exhaustive()
     }
 }
+
 impl Press {
     /// Create an idle button.
     pub fn new() -> Self {
         Self::default()
     }
+
     /// Install the activation handler.
     #[must_use]
     pub fn on_press(mut self, f: impl FnMut() + Send + 'static) -> Self {
         self.handler = Some(Box::new(f));
         self
     }
+
     /// Activate and return the cumulative count.
     pub fn press(&mut self) -> u64 {
         self.presses = self.presses.saturating_add(1);
@@ -43,26 +47,33 @@ impl Press {
         }
         self.presses
     }
+
     /// Record whether a human is holding the button down.
     pub fn set_pressed(&mut self, pressed: bool) {
         self.pressed = pressed;
     }
+
     /// Whether the button is currently held down.
     pub fn is_pressed(&self) -> bool {
         self.pressed
     }
 }
+
 const ACTIONS: [ActionSpec; 1] = [action("press", "Activate the control.", &[])];
+
 impl Behavior for Press {
     fn describe(&self, out: &mut Describe) {
         out.flag("pressed", self.pressed);
     }
+
     fn actions(&self) -> Vec<ActionSpec> {
         ACTIONS.to_vec()
     }
+
     fn owns(&self, action: &str) -> bool {
         ACTIONS.iter().any(|a| a.name == action)
     }
+
     fn invoke(&mut self, name: &str, args: &Args) -> Option<Result<Value, ActionError>> {
         dispatch(&ACTIONS, name, args, || {
             self.press();

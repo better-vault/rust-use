@@ -1,5 +1,7 @@
 mod board;
+
 mod panel;
+
 mod theme;
 
 pub(crate) use board::Pieces;
@@ -26,6 +28,7 @@ pub(crate) struct ChessWindow {
     _traffic: Task<()>,
     _clock: Task<()>,
 }
+
 impl ChessWindow {
     pub(crate) fn bind_keys(cx: &mut App) {
         cx.bind_keys([
@@ -33,6 +36,7 @@ impl ChessWindow {
             KeyBinding::new("cmd-n", NewGame, None),
         ]);
     }
+
     pub(crate) fn new(game: ChessApp, window: &mut Window, cx: &mut Context<'_, Self>) -> Self {
         let focus = cx.focus_handle();
         focus.focus(window);
@@ -77,12 +81,14 @@ impl ChessWindow {
             _traffic: traffic,
         }
     }
+
     fn invoke(&self, name: &str) {
         if let Err(err) = self.game.board.invoke(name, (), ChangeSource::User) {
             eprintln!("Chess action {name}: {err}");
         }
     }
 }
+
 impl Render for ChessWindow {
     fn render(&mut self, _: &mut Window, cx: &mut Context<'_, Self>) -> impl IntoElement {
         let plies = self.game.board.read(|b| b.history_san().len()).unwrap_or(0);

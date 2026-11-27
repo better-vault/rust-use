@@ -222,9 +222,12 @@ pub(super) fn expand(mut block: ItemImpl) -> syn::Result<TokenStream> {
     let (imp, _, bounds) = block.generics.split_for_impl();
     Ok(quote! {
         #block
+
         impl #imp #c::__private::OwnActions for #ty #bounds {
             const ACTIONS: &'static [#c::ActionSpec] = &[#(#specs),*];
+
             fn own_is_enabled(&self, action: &str) -> ::core::option::Option<bool> { match action {#(#enabled)* _=>None} }
+
             fn own_invoke(&mut self, action: &str, args: &#c::Args) -> ::core::option::Option<::core::result::Result<#c::Value, #c::ActionError>> {
                 match action { #(#invokes)* _=>None }
             }

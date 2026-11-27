@@ -12,11 +12,13 @@ pub struct ChessApp {
     pub metrics: Metrics,
     server: Option<ServerGuard>,
 }
+
 impl Default for ChessApp {
     fn default() -> Self {
         Self::new()
     }
 }
+
 impl ChessApp {
     /// Create a game in the standard starting position.
     pub fn new() -> Self {
@@ -29,6 +31,7 @@ impl ChessApp {
             server: None,
         }
     }
+
     /// Serve native requests and baseline commands on a named local socket.
     ///
     /// # Errors

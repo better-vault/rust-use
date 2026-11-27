@@ -13,6 +13,7 @@ pub struct SnapshotOptions {
     /// Start at this component id or the next available id.
     pub from: Option<ComponentId>,
 }
+
 impl Default for SnapshotOptions {
     fn default() -> Self {
         Self {
@@ -44,6 +45,7 @@ pub struct Snapshot {
     /// Continuation if more components match.
     pub more: Option<SnapshotMore>,
 }
+
 impl Snapshot {
     /// Return structured content for transport clients.
     pub fn to_json(&self) -> Value {
@@ -59,6 +61,7 @@ impl Snapshot {
         result
     }
 }
+
 impl Display for Snapshot {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "rev {}", self.revision)?;
@@ -82,6 +85,7 @@ pub struct Diff {
     /// Components unmounted during the interval.
     pub removed: Vec<ComponentId>,
 }
+
 impl Diff {
     /// Return structured content for transport clients.
     pub fn to_json(&self) -> Value {
@@ -94,6 +98,7 @@ impl Diff {
         json!({"revision": self.revision, "changed": changed, "removed": removed})
     }
 }
+
 impl Display for Diff {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "rev {}", self.revision)?;
@@ -117,6 +122,7 @@ pub struct Step {
     /// Positional arguments.
     pub args: Args,
 }
+
 /// Build a typed action step.
 pub fn step(target: impl Into<Ref>, action: impl Into<String>, args: impl Into<Args>) -> Step {
     Step {
@@ -125,6 +131,7 @@ pub fn step(target: impl Into<Ref>, action: impl Into<String>, args: impl Into<A
         args: args.into(),
     }
 }
+
 impl Display for Step {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match &self.target {
@@ -139,32 +146,39 @@ impl Display for Step {
         Ok(())
     }
 }
+
 /// A batch of typed steps or text parsed at dispatch time.
 pub struct Script(pub(crate) Batch);
+
 pub(crate) enum Batch {
     Text(String),
     Steps(Vec<Step>),
 }
+
 impl From<String> for Script {
     fn from(s: String) -> Self {
         Self(Batch::Text(s))
     }
 }
+
 impl From<&str> for Script {
     fn from(s: &str) -> Self {
         s.to_owned().into()
     }
 }
+
 impl From<Vec<Step>> for Script {
     fn from(v: Vec<Step>) -> Self {
         Self(Batch::Steps(v))
     }
 }
+
 impl<const N: usize> From<[Step; N]> for Script {
     fn from(v: [Step; N]) -> Self {
         Vec::from(v).into()
     }
 }
+
 impl From<Step> for Script {
     fn from(s: Step) -> Self {
         vec![s].into()
@@ -179,6 +193,7 @@ pub struct ActOutcome {
     /// Changes during dispatch.
     pub diff: Diff,
 }
+
 impl Display for ActOutcome {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "ok")?;
@@ -217,6 +232,7 @@ pub enum ActError {
         diff: Diff,
     },
 }
+
 impl ActError {
     /// Render the wire protocol failure reply.
     pub fn to_reply(&self) -> String {
@@ -231,12 +247,14 @@ impl ActError {
         }
     }
 }
+
 /// A page returned by a query.
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueryOutcome {
     /// Absent when the component has no query behavior.
     pub page: Option<Page>,
 }
+
 impl Display for QueryOutcome {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let Some(page) = &self.page else {

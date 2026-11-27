@@ -102,6 +102,7 @@ impl Endpoint {
         options.create_sync()
     }
 }
+
 #[cfg(unix)]
 fn directory() -> std::path::PathBuf {
     env::var_os("XDG_RUNTIME_DIR")

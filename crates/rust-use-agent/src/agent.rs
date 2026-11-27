@@ -13,6 +13,7 @@ pub struct Agent {
     last_seen: AtomicU64,
     guards: Vec<Subscription>,
 }
+
 impl Agent {
     /// Open a session on a registry, initially tracking changes since revision zero.
     pub fn new(ui: &Ui) -> Self {
@@ -22,6 +23,7 @@ impl Agent {
             guards: Vec::new(),
         }
     }
+
     /// Require this predicate for every agent-originated invocation on this registry
     /// for the lifetime of this session. Chained predicates must all accept.
     #[must_use]
@@ -43,6 +45,7 @@ impl Agent {
     pub fn snapshot(&self) -> Snapshot {
         self.snapshot_with(SnapshotOptions::default())
     }
+
     /// Describe a page of the screen and advance the session cursor.
     pub fn snapshot_with(&self, opts: SnapshotOptions) -> Snapshot {
         let page = self.component_page(opts, |_| true);
@@ -103,18 +106,22 @@ impl Agent {
             }
         }
     }
+
     fn advance(&self, revision: u64) {
         self.last_seen.fetch_max(revision, Ordering::Relaxed);
     }
+
     /// Return changes since the session cursor and advance it.
     pub fn diff(&self) -> Diff {
         self.finish_diff(self.last_seen.load(Ordering::Relaxed))
     }
+
     fn finish_diff(&self, since: u64) -> Diff {
         let diff = self.diff_since(since);
         self.advance(diff.revision);
         diff
     }
+
     /// Describe changes after an explicit revision, preserving the cursor.
     pub fn diff_since(&self, revision: u64) -> Diff {
         loop {
@@ -133,6 +140,7 @@ impl Agent {
             }
         }
     }
+
     /// Dispatch a batch in order and report changes made during the batch.
     ///
     /// # Errors
@@ -190,6 +198,7 @@ impl Agent {
             diff: self.finish_diff(before),
         })
     }
+
     /// Search options starting at the supplied offset.
     ///
     /// # Errors
@@ -209,6 +218,7 @@ impl Agent {
             page: self.ui.query(target, &query)?,
         })
     }
+
     /// Execute one protocol request and render its reply.
     ///
     /// ```
@@ -260,11 +270,13 @@ impl Agent {
         }
     }
 }
+
 /// Open an agent session directly on a UI registry.
 pub trait UiAgentExt {
     /// Create an independent protocol session.
     fn agent(&self) -> Agent;
 }
+
 impl UiAgentExt for Ui {
     fn agent(&self) -> Agent {
         Agent::new(self)

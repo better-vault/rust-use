@@ -12,27 +12,33 @@ pub use serde_json::Value;
 /// ```
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Args(Vec<Value>);
+
 impl Args {
     /// Construct an empty argument list.
     pub fn new() -> Self {
         Self::default()
     }
+
     /// Wrap a vector of argument values.
     pub fn from_vec(v: Vec<Value>) -> Self {
         Self(v)
     }
+
     /// Number of supplied arguments.
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
     /// Whether no arguments were supplied.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
     /// Borrow the positional values.
     pub fn as_slice(&self) -> &[Value] {
         &self.0
     }
+
     /// Decode a required argument.
     ///
     /// # Errors
@@ -45,6 +51,7 @@ impl Args {
         self.get_opt(index, name)?
             .ok_or(ActionError::MissingArg(name))
     }
+
     /// Decode an optional argument, returning `None` when absent.
     ///
     /// # Errors
@@ -65,16 +72,19 @@ impl Args {
             .transpose()
     }
 }
+
 impl From<()> for Args {
     fn from((): ()) -> Self {
         Self::new()
     }
 }
+
 impl From<Vec<Value>> for Args {
     fn from(v: Vec<Value>) -> Self {
         Self(v)
     }
 }
+
 macro_rules! tuple_args {
     ($($ty:ident $index:tt),+) => {
         impl<$($ty: Serialize),+> From<($($ty,)+)> for Args {
@@ -84,7 +94,11 @@ macro_rules! tuple_args {
         }
     }
 }
+
 tuple_args!(A 0);
+
 tuple_args!(A 0,B 1);
+
 tuple_args!(A 0,B 1,C 2);
+
 tuple_args!(A 0,B 1,C 2,D 3);

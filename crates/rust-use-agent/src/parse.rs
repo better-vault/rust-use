@@ -29,6 +29,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn new(input: &'a str) -> Self {
         Self { input, rest: input }
     }
+
     fn error(&self, message: impl Into<String>) -> Syntax {
         let before = &self.input[..self.input.len() - self.rest.len()];
         Syntax {
@@ -37,16 +38,19 @@ impl<'a> Parser<'a> {
             message: message.into(),
         }
     }
+
     fn spaces(&mut self) {
         self.rest = self
             .rest
             .trim_start_matches(|c: char| c.is_whitespace() && c != '\n');
     }
+
     fn skip_comment(&mut self) {
         if self.rest.starts_with('#') {
             self.rest = self.rest.find('\n').map_or("", |i| &self.rest[i..]);
         }
     }
+
     fn list_space(&mut self) {
         self.rest = self.rest.trim_start();
         while self.rest.starts_with('#') {
@@ -54,9 +58,11 @@ impl<'a> Parser<'a> {
             self.rest = self.rest.trim_start();
         }
     }
+
     fn boundary(&self) -> bool {
         self.rest.is_empty() || self.rest.starts_with([';', '#', '\n'])
     }
+
     fn gap(&mut self) -> Result<(), Syntax> {
         if !self.boundary() && !self.rest.starts_with(char::is_whitespace) {
             return Err(self.error("expected whitespace"));
@@ -64,6 +70,7 @@ impl<'a> Parser<'a> {
         self.spaces();
         Ok(())
     }
+
     fn word(&mut self) -> Result<&'a str, Syntax> {
         let end = self
             .rest
@@ -76,6 +83,7 @@ impl<'a> Parser<'a> {
         self.rest = rest;
         Ok(s)
     }
+
     fn json<T: serde::de::DeserializeOwned>(&mut self) -> Result<T, Syntax> {
         let mut stream = Deserializer::from_str(self.rest).into_iter::<T>();
         let v = stream
@@ -85,6 +93,7 @@ impl<'a> Parser<'a> {
         self.rest = &self.rest[stream.byte_offset()..];
         Ok(v)
     }
+
     fn target(&mut self) -> Result<Ref, Syntax> {
         if self.rest.starts_with('"') {
             return self.json().map(Ref::Label);
@@ -98,6 +107,7 @@ impl<'a> Parser<'a> {
             Ok(s.into())
         }
     }
+
     fn value(&mut self, depth: usize) -> Result<Value, Syntax> {
         if depth >= 128 {
             return Err(self.error("list nesting limit exceeded"));
@@ -145,6 +155,7 @@ impl<'a> Parser<'a> {
             }
         })
     }
+
     pub(crate) fn script(mut self) -> Result<Vec<Step>, Syntax> {
         let mut steps = Vec::new();
         loop {
@@ -173,6 +184,7 @@ impl<'a> Parser<'a> {
         }
         Ok(steps)
     }
+
     pub(crate) fn query(mut self) -> Result<(Ref, Option<String>, usize), Syntax> {
         let target = self.target()?;
         self.gap()?;

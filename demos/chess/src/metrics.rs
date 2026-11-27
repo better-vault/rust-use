@@ -28,11 +28,13 @@ pub struct Traffic {
     /// Sum of observed dispatch and reply-write times.
     pub total_latency: Duration,
 }
+
 impl Traffic {
     /// Estimated tokens for all payloads combined, rounded up.
     pub fn estimated_tokens(&self) -> usize {
         (self.request_bytes + self.reply_bytes).div_ceil(4)
     }
+
     /// Average observed latency, or zero before the first request.
     #[allow(
         clippy::cast_possible_truncation,
@@ -89,6 +91,7 @@ pub struct Metrics {
     changed: async_channel::Sender<()>,
     updates: async_channel::Receiver<()>,
 }
+
 impl Default for Metrics {
     fn default() -> Self {
         let (changed, updates) = async_channel::bounded(1);
@@ -99,16 +102,19 @@ impl Default for Metrics {
         }
     }
 }
+
 impl Metrics {
     fn lock(&self) -> MutexGuard<'_, MetricsView> {
         self.view
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
+
     /// Coalesced wakeups for the window. Read the latest snapshot on receipt.
     pub fn updates(&self) -> async_channel::Receiver<()> {
         self.updates.clone()
     }
+
     pub(crate) fn observe(&self, log: &RequestLog<'_>) {
         if log.request.split_whitespace().next() == Some("metrics") {
             return;
@@ -132,10 +138,12 @@ impl Metrics {
         drop(view);
         let _ = self.changed.try_send(());
     }
+
     /// Read both sets of measurements atomically.
     pub fn snapshot(&self) -> MetricsView {
         *self.lock()
     }
+
     /// Clear both sets of measurements atomically and start the run timer.
     pub fn reset(&self) {
         *self.lock() = MetricsView {

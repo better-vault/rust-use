@@ -18,7 +18,3 @@ workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-
-[dev-dependencies]
-# Path-only so `cargo package` strips it: the macros crate is not on crates.io before a release.
-rust-use-macros = { path = "../rust-use-macros" }

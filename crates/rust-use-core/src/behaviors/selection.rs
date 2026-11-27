@@ -11,6 +11,7 @@ pub enum SelectionMode {
     /// Select distinct keys in insertion order.
     Multiple,
 }
+
 /// Ordered selection of item keys.
 ///
 /// ```
@@ -24,11 +25,13 @@ pub struct Selection<K> {
     mode: SelectionMode,
     keys: Vec<K>,
 }
+
 impl<K> Default for Selection<K> {
     fn default() -> Self {
         Self::new(SelectionMode::Single)
     }
 }
+
 impl<K> Selection<K> {
     /// Create an empty selection.
     pub fn new(mode: SelectionMode) -> Self {
@@ -37,24 +40,29 @@ impl<K> Selection<K> {
             keys: Vec::new(),
         }
     }
+
     /// Read the selection policy.
     pub fn mode(&self) -> SelectionMode {
         self.mode
     }
+
     /// Borrow selected keys in selection order.
     pub fn selected(&self) -> &[K] {
         &self.keys
     }
+
     /// Remove all keys.
     pub fn clear(&mut self) {
         self.keys.clear();
     }
 }
+
 impl<K: Eq> Selection<K> {
     /// Test membership.
     pub fn is_selected(&self, key: &K) -> bool {
         self.keys.contains(key)
     }
+
     /// Select a key, returning whether the selection changed.
     pub fn select(&mut self, key: K) -> bool {
         if self.is_selected(&key) {
@@ -66,6 +74,7 @@ impl<K: Eq> Selection<K> {
         self.keys.push(key);
         true
     }
+
     /// Remove a key, returning whether it was selected.
     pub fn deselect(&mut self, key: &K) -> bool {
         if let Some(i) = self.keys.iter().position(|k| k == key) {
@@ -75,16 +84,19 @@ impl<K: Eq> Selection<K> {
             false
         }
     }
+
     /// Toggle membership and return the resulting membership.
     pub fn toggle(&mut self, key: K) -> bool {
         !self.deselect(&key) && self.select(key)
     }
 }
+
 const ACTIONS: [ActionSpec; 3] = [
     action("select", "Select a key.", &[param("key", "any")]),
     action("deselect", "Remove a key.", &[param("key", "any")]),
     action("clear", "Clear the selection.", &[]),
 ];
+
 impl<K: Serialize + DeserializeOwned + Eq + Clone + Send + 'static> Behavior for Selection<K> {
     fn describe(&self, out: &mut Describe) {
         if let Some(first) = self.keys.first() {
@@ -94,12 +106,15 @@ impl<K: Serialize + DeserializeOwned + Eq + Clone + Send + 'static> Behavior for
             };
         }
     }
+
     fn actions(&self) -> Vec<ActionSpec> {
         ACTIONS.to_vec()
     }
+
     fn owns(&self, action: &str) -> bool {
         ACTIONS.iter().any(|a| a.name == action)
     }
+
     fn is_enabled(&self, name: &str) -> bool {
         match name {
             "select" => true,
@@ -108,6 +123,7 @@ impl<K: Serialize + DeserializeOwned + Eq + Clone + Send + 'static> Behavior for
             _ => false,
         }
     }
+
     fn invoke(&mut self, name: &str, args: &Args) -> Option<Result<Value, ActionError>> {
         dispatch(&ACTIONS, name, args, || {
             if !self.is_enabled(name) {
@@ -126,6 +142,7 @@ impl<K: Serialize + DeserializeOwned + Eq + Clone + Send + 'static> Behavior for
         })
     }
 }
+
 #[test]
 fn single_replaces() {
     let mut s = Selection::default();

@@ -15,6 +15,7 @@ pub enum Orientation {
         columns: usize,
     },
 }
+
 /// Navigation keys accepted by roving focus.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Key {
@@ -31,6 +32,7 @@ pub enum Key {
     /// Last item.
     End,
 }
+
 /// Keyboard navigation over indexed items. Focus starts unset.
 ///
 /// ```
@@ -48,6 +50,7 @@ pub struct RovingFocus {
     /// Cycle at the end of a row, column, or list.
     pub wrap: bool,
 }
+
 impl RovingFocus {
     /// Create a navigation group with wrapping disabled.
     pub fn new(orientation: Orientation, len: usize) -> Self {
@@ -58,23 +61,28 @@ impl RovingFocus {
             wrap: false,
         }
     }
+
     /// Current focused index.
     pub fn active(&self) -> Option<usize> {
         self.active
     }
+
     /// Number of focusable items.
     pub fn len(&self) -> usize {
         self.len
     }
+
     /// Whether the group has no items.
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
+
     /// Resize the group, clearing focus if its item disappeared.
     pub fn set_len(&mut self, len: usize) {
         self.len = len;
         self.active = self.active.filter(|&i| i < len);
     }
+
     /// Focus an index, returning false for out-of-range indices.
     pub fn focus(&mut self, i: usize) -> bool {
         if i >= self.len {
@@ -83,14 +91,17 @@ impl RovingFocus {
         self.active = Some(i);
         true
     }
+
     /// Focus the first item.
     pub fn first(&mut self) -> bool {
         self.focus(0)
     }
+
     /// Focus the last item.
     pub fn last(&mut self) -> bool {
         self.focus(self.len.saturating_sub(1))
     }
+
     fn step(&mut self, forward: bool, first: usize, last: usize, stride: usize) -> bool {
         let Some(i) = self.active else {
             return if forward { self.first() } else { self.last() };
@@ -103,15 +114,18 @@ impl RovingFocus {
         let target = next.or_else(|| self.wrap.then_some(if forward { first } else { last }));
         target.is_some_and(|n| n != i && self.focus(n))
     }
+
     /// Move to the next item in display order.
     #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> bool {
         self.step(true, 0, self.len.saturating_sub(1), 1)
     }
+
     /// Move to the preceding item in display order.
     pub fn prev(&mut self) -> bool {
         self.step(false, 0, self.len.saturating_sub(1), 1)
     }
+
     fn arrow(&mut self, vertical: bool, forward: bool) -> bool {
         let end = self.len.saturating_sub(1);
         match self.orientation {
@@ -131,22 +145,27 @@ impl RovingFocus {
             _ => false,
         }
     }
+
     /// Move up in the current column.
     pub fn up(&mut self) -> bool {
         self.arrow(true, false)
     }
+
     /// Move down in the current column.
     pub fn down(&mut self) -> bool {
         self.arrow(true, true)
     }
+
     /// Move left in the current row.
     pub fn left(&mut self) -> bool {
         self.arrow(false, false)
     }
+
     /// Move right in the current row.
     pub fn right(&mut self) -> bool {
         self.arrow(false, true)
     }
+
     /// Apply a navigation key, returning whether focus changed.
     pub fn handle_key(&mut self, key: Key) -> bool {
         let before = self.active;
@@ -161,19 +180,24 @@ impl RovingFocus {
         before != self.active
     }
 }
+
 const ACTIONS: [ActionSpec; 1] = [action("focus", "Focus an item.", &[param("index", "int")])];
+
 impl Behavior for RovingFocus {
     fn describe(&self, out: &mut Describe) {
         if let Some(i) = self.active {
             out.attr("focus", i);
         }
     }
+
     fn actions(&self) -> Vec<ActionSpec> {
         ACTIONS.to_vec()
     }
+
     fn owns(&self, action: &str) -> bool {
         ACTIONS.iter().any(|a| a.name == action)
     }
+
     fn invoke(&mut self, name: &str, args: &Args) -> Option<Result<Value, ActionError>> {
         dispatch(&ACTIONS, name, args, || {
             if self.focus(args.get(0, "index")?) {
@@ -184,6 +208,7 @@ impl Behavior for RovingFocus {
         })
     }
 }
+
 #[test]
 fn grid_edges() {
     let mut f = RovingFocus::new(Orientation::Grid { columns: 3 }, 8);

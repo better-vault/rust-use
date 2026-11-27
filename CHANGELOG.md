@@ -6,6 +6,56 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 follows [semantic versioning](https://semver.org/spec/v2.0.0.html). Before 1.0, a minor release
 (0.2.0, 0.3.0) may change the API, and a patch (0.1.1) is a fix that leaves it alone.
 
+## [0.2.0] — 2026-11-28
+
+Five new behaviors, ways to keep secrets and risky actions away from agents, atomic scripts, a
+Tauri plugin, and fixes from a review of 0.1. Still beta.
+
+### Added
+
+- **Five behaviors.** `Transfer` moves items between named lists, kanban-style, with one
+  `move <item> <list>`. `Tree` is addressed by path (`select src/agent/format.rs`), and `query`
+  reaches into collapsed branches. `Range` is a bounded number, or a span with two thumbs, that
+  clamps and snaps to its step. `Tabs` selects a tab and says which panel to show. `Combobox` picks
+  from a long list, or takes free text, and suggests close options when a pick doesn't match.
+  [`examples/agent_tour.rs`](crates/rust-use/examples/agent_tour.rs) changes all five with one `act`.
+- **Agent safety.** `#[agent(secret)]` shows a field as `[redacted]` to agents.
+  `#[primitive(hidden)]` and `Handle::hide_from_agents()` make a component invisible and
+  unreachable for agents. `#[action(confirm = "…")]` marks an action that needs a person: agents see
+  it as `!!name`, and it is refused unless the app installs `Approvals`, which holds the agent's
+  step until someone approves or denies it, or a timeout passes.
+- **Atomic `act`.** A script that starts with `atomic` (`act --atomic`, `atomic: true` over MCP,
+  `Script::atomic()`) rolls every touched component back if any step fails, and replies
+  `rolled back`. Components opt in with `#[primitive(checkpoint)]`. While a batch runs, other
+  writes to its components are refused rather than silently undone.
+- **`rust-use-tauri`** (feature `tauri`). A Tauri v2 plugin: the webview gets `snapshot`,
+  `snapshot_json`, `act`, `invoke` and `query`, and a `rust-use://changed` event whenever the `Ui`
+  changes. Buttons in the page go through `invoke` as user actions, sharing the agent's path and
+  `allow` checks. It builds without a webview dependency.
+- **Snapshot paging and component search.** A snapshot returns at most 100 components (set with
+  `--limit`) and ends with `more <n> from=@<id>`. `query --kind` and `query --text` find components
+  across the screen.
+- **`hello`.** It returns the crate version, a per-`Ui` session id and the revision.
+
+### Changed
+
+- **`ActionSpec` and `ParamSpec` are `#[non_exhaustive]`.** Build them with `ActionSpec::new(..)` and
+  `ParamSpec::new(..)` (plus `.confirm(..)` and `.optional()`) instead of struct literals. This only
+  affects code that implements `Behavior` by hand.
+- **`Behavior` has two new provided methods**: `queryable()` and `owns()`. Hand-written behaviors
+  that answer `query` should return `true` from `queryable()`.
+
+### Fixed
+
+- **Snapshots of large lists were slow.** Every snapshot ran a query on every component, and a
+  `List` serialized all its items to count them. A snapshot with a 100,000-row list now takes about
+  a microsecond.
+- **The CLI's `diff` went stale after an app restart.** It now notices the new session and shows
+  the whole screen, with a notice.
+- **An empty value showed as `=null`.** It is now omitted, as FORMAT.md specifies.
+- **The published `rust-use-core` couldn't run its own tests**, because one needed a stripped
+  dev-dependency.
+
 ## [0.1.1] — 2026-11-27
 
 Documentation only; no code changes.
@@ -71,5 +121,6 @@ you depend on), `rust-use-core`, `rust-use-macros`, `rust-use-agent`, `rust-use-
   a wire replay, a Claude Code runner and a side-by-side race video
   ([`bench/`](bench/README.md)).
 
+[0.2.0]: https://github.com/better-vault/rust-use/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/better-vault/rust-use/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/better-vault/rust-use/releases/tag/v0.1.0

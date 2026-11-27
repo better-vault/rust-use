@@ -11,7 +11,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! rust-use = "0.1"                                     # or: features = ["gpui", "ipc"]
+//! rust-use = "0.2"                                     # or: features = ["gpui", "ipc"]
 //! ```
 //!
 //! | Feature | Default | Adds |

@@ -1037,7 +1037,7 @@ dependencies = [
 
 [[package]]
 name = "chess-demo"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "async-channel 2.5.0",
  "cozy-chess",
@@ -1050,7 +1050,7 @@ dependencies = [
 
 [[package]]
 name = "chess-mcp-baseline"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "clap",
  "rmcp",
@@ -5849,7 +5849,7 @@ dependencies = [
 
 [[package]]
 name = "rust-use"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "gpui",
  "rust-use-agent",
@@ -5862,7 +5862,7 @@ dependencies = [
 
 [[package]]
 name = "rust-use-agent"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "insta",
  "interprocess",
@@ -5879,7 +5879,7 @@ dependencies = [
 
 [[package]]
 name = "rust-use-bench"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "chess-demo",
  "criterion",
@@ -5889,7 +5889,7 @@ dependencies = [
 
 [[package]]
 name = "rust-use-cli"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "clap",
  "rust-use-agent",
@@ -5899,7 +5899,7 @@ dependencies = [
 
 [[package]]
 name = "rust-use-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -5908,7 +5908,7 @@ dependencies = [
 
 [[package]]
 name = "rust-use-gpui"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "futures",
  "gpui",
@@ -5917,7 +5917,7 @@ dependencies = [
 
 [[package]]
 name = "rust-use-macros"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "heck 0.5.0",
  "proc-macro-crate 3.5.0",
@@ -5930,7 +5930,7 @@ dependencies = [
 
 [[package]]
 name = "rust-use-tauri"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "rust-use-agent",
  "rust-use-core",

@@ -11,7 +11,7 @@ Send `hello` to read the server's crate version, the `Ui` session id, and its cu
 The reply is one line:
 
 ```
-rust-use 0.1.1 session 0123456789abcdef rev 7
+rust-use 0.2.0 session 0123456789abcdef rev 7
 ```
 
 The session id is a nonzero 64-bit value encoded as 16 lowercase hex digits. It identifies

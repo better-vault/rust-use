@@ -55,6 +55,9 @@ impl<T: Serialize + DeserializeOwned + Clone + Send + 'static> Behavior for Fiel
     fn actions(&self) -> Vec<ActionSpec> {
         ACTIONS.to_vec()
     }
+    fn owns(&self, action: &str) -> bool {
+        ACTIONS.iter().any(|a| a.name == action)
+    }
     fn invoke(&mut self, name: &str, args: &Args) -> Option<Result<Value, ActionError>> {
         dispatch(&ACTIONS, name, args, || self.set(args.get(0, "value")?))
     }

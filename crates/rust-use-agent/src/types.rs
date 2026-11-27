@@ -1,10 +1,7 @@
 use crate::format;
 use rust_use_core::{Args, ComponentId, ComponentInfo, InvokeError, Page, Ref, Value};
 use serde_json::json;
-use std::{
-    collections::BTreeSet,
-    fmt::{self, Display, Formatter},
-};
+use std::fmt::{self, Display, Formatter};
 
 /// Controls optional snapshot detail.
 #[derive(Debug, Clone, Copy, Default)]
@@ -22,7 +19,6 @@ pub struct Snapshot {
     pub components: Vec<ComponentInfo>,
     /// Whether to include action documentation.
     pub docs: bool,
-    pub(crate) queryable: BTreeSet<ComponentId>,
 }
 impl Snapshot {
     /// Return structured content for transport clients.
@@ -30,7 +26,7 @@ impl Snapshot {
         let components: Vec<_> = self
             .components
             .iter()
-            .map(|c| format::json_component(c, self.docs, self.queryable.contains(&c.id)))
+            .map(|c| format::json_component(c, self.docs))
             .collect();
         json!({"revision": self.revision, "components": components})
     }
@@ -39,7 +35,7 @@ impl Display for Snapshot {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "rev {}", self.revision)?;
         for c in &self.components {
-            format::component(f, c, self.docs, self.queryable.contains(&c.id))?;
+            format::component(f, c, self.docs)?;
         }
         Ok(())
     }
@@ -54,7 +50,6 @@ pub struct Diff {
     pub changed: Vec<ComponentInfo>,
     /// Components unmounted during the interval.
     pub removed: Vec<ComponentId>,
-    pub(crate) queryable: BTreeSet<ComponentId>,
 }
 impl Diff {
     /// Return structured content for transport clients.
@@ -62,7 +57,7 @@ impl Diff {
         let changed: Vec<_> = self
             .changed
             .iter()
-            .map(|c| format::json_component(c, false, self.queryable.contains(&c.id)))
+            .map(|c| format::json_component(c, false))
             .collect();
         let removed: Vec<_> = self.removed.iter().map(|id| id.get()).collect();
         json!({"revision": self.revision, "changed": changed, "removed": removed})
@@ -72,7 +67,7 @@ impl Display for Diff {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "rev {}", self.revision)?;
         for c in &self.changed {
-            format::component(f, c, false, self.queryable.contains(&c.id))?;
+            format::component(f, c, false)?;
         }
         for id in &self.removed {
             write!(f, "\n-{id}")?;

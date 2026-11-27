@@ -17,6 +17,19 @@ pub trait Behavior: Send + 'static {
     fn actions(&self) -> Vec<ActionSpec> {
         Vec::new()
     }
+    /// Whether this behavior declares `action`, including when the action is disabled.
+    /// The default scans [`Behavior::actions`]. Override this when the names can be checked
+    /// without allocating.
+    ///
+    /// ```
+    /// use rust_use_core::{Behavior, List};
+    /// let list = List::<u64>::default();
+    /// assert!(list.owns("move"));
+    /// assert!(!list.owns("press"));
+    /// ```
+    fn owns(&self, action: &str) -> bool {
+        self.actions().iter().any(|a| a.name == action)
+    }
     /// Check whether a declared action is currently available.
     fn is_enabled(&self, _action: &str) -> bool {
         true
@@ -24,6 +37,18 @@ pub trait Behavior: Send + 'static {
     /// Run an owned action or return `None` to allow composite dispatch to continue.
     fn invoke(&mut self, _action: &str, _args: &Args) -> Option<Result<Value, ActionError>> {
         None
+    }
+    /// Whether this behavior supports [`Behavior::query`]. Defaults to `false`.
+    /// Query implementations that return a page should advertise support here without doing
+    /// any search or pagination, since this is checked on every snapshot.
+    ///
+    /// ```
+    /// use rust_use_core::{Behavior, List, Press};
+    /// assert!(List::<u64>::default().queryable());
+    /// assert!(!Press::default().queryable());
+    /// ```
+    fn queryable(&self) -> bool {
+        false
     }
     /// Search an option list, returning `None` for non-queryable behaviors.
     fn query(&self, _query: &Query) -> Option<Page> {

@@ -31,6 +31,7 @@ thiserror.workspace = true
 [dev-dependencies]
 rmcp = { version = "3.12", default-features = false, features = ["client"] }
 insta.workspace = true
+rust-use-macros.workspace = true
 
 [lints]
 workspace = true

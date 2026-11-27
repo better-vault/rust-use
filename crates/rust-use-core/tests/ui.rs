@@ -50,6 +50,9 @@ impl Behavior for Counter {
             _ => None,
         }
     }
+    fn queryable(&self) -> bool {
+        true
+    }
     fn query(&self, q: &Query) -> Option<Page> {
         Some(Page::from_iter((0..self.0.get()).map(Value::from), q))
     }

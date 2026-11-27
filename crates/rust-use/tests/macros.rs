@@ -27,6 +27,9 @@ impl Behavior for Selection {
             Ok(Value::Null)
         })
     }
+    fn queryable(&self) -> bool {
+        true
+    }
     fn query(&self, q: &Query) -> Option<Page> {
         Some(Page::from_iter([Value::from(self.0)], q))
     }
@@ -106,6 +109,9 @@ impl MuteButton {
 fn describe_and_specs() -> Result<(), InvokeError> {
     let mut button = MuteButton::default();
     button.helper();
+    assert!(button.owns("undo"));
+    assert!(button.owns("select"));
+    assert!(!button.owns("missing"));
     let specs = button.actions();
     assert_eq!(
         specs.iter().map(|s| s.name).collect::<Vec<_>>(),
@@ -147,6 +153,7 @@ fn describe_and_specs() -> Result<(), InvokeError> {
     let id = button.id();
     let initial = ui.component(id)?;
     assert_eq!(initial.name, "mute-button");
+    assert!(initial.queryable);
     let mut expected = Describe::new();
     expected
         .value(false)

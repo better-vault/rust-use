@@ -2,14 +2,8 @@ use crate::{
     ActError, ActOutcome, Diff, QueryOutcome, Script, Snapshot, SnapshotOptions, parse::Parser,
     types::Batch,
 };
-use rust_use_core::{
-    ActionRequest, ChangeSource, ComponentId, ComponentInfo, Query, Ref, ResolveError,
-    Subscription, Ui,
-};
-use std::{
-    collections::BTreeSet,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use rust_use_core::{ActionRequest, ChangeSource, Query, Ref, ResolveError, Subscription, Ui};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// A protocol session with its own revision cursor and interceptor guards.
 pub struct Agent {
@@ -52,28 +46,15 @@ impl Agent {
         loop {
             let revision = self.ui.revision();
             let components = self.ui.components();
-            let queryable = self.queryable(&components);
             if revision == self.ui.revision() {
                 self.advance(revision);
                 return Snapshot {
                     revision,
                     components,
                     docs: opts.docs,
-                    queryable,
                 };
             }
         }
-    }
-    fn queryable(&self, components: &[ComponentInfo]) -> BTreeSet<ComponentId> {
-        let probe = Query {
-            limit: 1,
-            ..Query::default()
-        };
-        components
-            .iter()
-            .filter(|c| matches!(self.ui.query(c.id, &probe), Ok(Some(_))))
-            .map(|c| c.id)
-            .collect()
     }
     fn advance(&self, revision: u64) {
         self.last_seen.fetch_max(revision, Ordering::Relaxed);
@@ -96,13 +77,11 @@ impl Agent {
                 .into_iter()
                 .filter_map(|id| self.ui.component(id).ok())
                 .collect();
-            let queryable = self.queryable(&changed);
             if delta.revision == self.ui.revision() {
                 return Diff {
                     revision: delta.revision,
                     changed,
                     removed: delta.removed,
-                    queryable,
                 };
             }
         }

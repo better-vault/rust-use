@@ -42,6 +42,9 @@ impl Behavior for Toggle {
     fn actions(&self) -> Vec<ActionSpec> {
         ACTIONS.to_vec()
     }
+    fn owns(&self, action: &str) -> bool {
+        ACTIONS.iter().any(|a| a.name == action)
+    }
     fn invoke(&mut self, name: &str, args: &Args) -> Option<Result<Value, ActionError>> {
         dispatch(&ACTIONS, name, args, || {
             if name == "toggle" {

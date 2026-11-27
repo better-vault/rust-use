@@ -42,6 +42,9 @@ impl Behavior for Popup {
     fn actions(&self) -> Vec<ActionSpec> {
         ACTIONS.to_vec()
     }
+    fn owns(&self, action: &str) -> bool {
+        ACTIONS.iter().any(|a| a.name == action)
+    }
     fn is_enabled(&self, name: &str) -> bool {
         match name {
             "open" => !self.open,

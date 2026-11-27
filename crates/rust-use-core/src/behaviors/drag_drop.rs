@@ -90,6 +90,9 @@ impl<Id: Serialize + DeserializeOwned + Clone + Send + 'static> Behavior for Dra
     fn actions(&self) -> Vec<ActionSpec> {
         ACTIONS.to_vec()
     }
+    fn owns(&self, action: &str) -> bool {
+        ACTIONS.iter().any(|a| a.name == action)
+    }
     fn invoke(&mut self, name: &str, args: &Args) -> Option<Result<Value, ActionError>> {
         dispatch(&ACTIONS, name, args, || {
             self.notify(args.get(0, "from")?, args.get(1, "to")?)

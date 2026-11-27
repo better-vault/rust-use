@@ -46,12 +46,7 @@ pub(crate) fn value(w: &mut impl Write, v: &Value) -> fmt::Result {
     }
 }
 
-pub(crate) fn component(
-    w: &mut impl Write,
-    c: &ComponentInfo,
-    docs: bool,
-    query: bool,
-) -> fmt::Result {
+pub(crate) fn component(w: &mut impl Write, c: &ComponentInfo, docs: bool) -> fmt::Result {
     write!(w, "\n{} {}", c.id, c.name)?;
     if let Some(s) = &c.label {
         w.write_char(' ')?;
@@ -91,7 +86,7 @@ pub(crate) fn component(
             w.write_char(')')?;
         }
     }
-    if query {
+    if c.queryable {
         w.write_str(" ?query")?;
     }
     if docs {
@@ -104,7 +99,7 @@ pub(crate) fn component(
     Ok(())
 }
 
-pub(crate) fn json_component(c: &ComponentInfo, docs: bool, query: bool) -> Value {
+pub(crate) fn json_component(c: &ComponentInfo, docs: bool) -> Value {
     let actions = c
         .actions
         .iter()
@@ -126,7 +121,7 @@ pub(crate) fn json_component(c: &ComponentInfo, docs: bool, query: bool) -> Valu
         .attrs()
         .map(|(k, v)| (k.to_owned(), v.clone()))
         .collect::<serde_json::Map<_, _>>();
-    let mut result = json!({"id":c.id.get(),"kind":c.name,"label":c.label,"revision":c.revision,"attrs":attrs,"actions":actions,"query":query});
+    let mut result = json!({"id":c.id.get(),"kind":c.name,"label":c.label,"revision":c.revision,"attrs":attrs,"actions":actions,"query":c.queryable});
     if let Some(v) = c.describe.primary() {
         result["value"] = v.clone();
     }

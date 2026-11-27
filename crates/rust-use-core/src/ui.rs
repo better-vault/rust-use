@@ -76,6 +76,8 @@ pub struct ComponentInfo {
     pub describe: Describe,
     /// Currently enabled actions, in declaration order.
     pub actions: Vec<ActionSpec>,
+    /// Whether the component supports queries.
+    pub queryable: bool,
 }
 /// Notification of a committed change.
 #[derive(Debug, Clone, PartialEq)]
@@ -296,6 +298,7 @@ impl Ui {
             revision,
             describe,
             actions,
+            queryable: guard.queryable(),
         })
     }
     /// Resolve a component id, label, or kind.
@@ -442,7 +445,7 @@ fn unknown(p: &dyn Erased, name: &str, action: &str) -> InvokeError {
     }
 }
 fn check_action(p: &dyn Erased, name: &str, action: &str) -> Result<(), InvokeError> {
-    if !p.actions().iter().any(|a| a.name == action) {
+    if !p.owns(action) {
         return Err(unknown(p, name, action));
     }
     if !p.is_enabled(action) {

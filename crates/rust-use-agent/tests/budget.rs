@@ -2,8 +2,12 @@
 use insta::assert_snapshot;
 use rust_use_agent::{UiAgentExt, step};
 use rust_use_core::{
-    ActionError, ActionSpec, Args, Behavior, ChangeSource, Describe, Page, ParamSpec, Primitive,
-    Query, Ui, Value,
+    ActionError, ActionSpec, Args, Behavior, ChangeSource, Describe, List, Page, ParamSpec,
+    Primitive, Query, Ui, Value,
+};
+use std::{
+    hint::black_box,
+    time::{Duration, Instant},
 };
 
 const fn action(name: &'static str, doc: &'static str, params: &'static [ParamSpec]) -> ActionSpec {
@@ -92,6 +96,9 @@ impl Primitive for Select {
 impl Behavior for Select {
     fn describe(&self, d: &mut Describe) {
         d.value("Sweden").flag("open", true);
+    }
+    fn queryable(&self) -> bool {
+        true
     }
     fn query(&self, q: &Query) -> Option<Page> {
         Some(Page::from_iter(
@@ -182,6 +189,38 @@ fn compact_screen_budget() {
     let reply = agent.handle("act @1 toggle");
     assert_eq!(reply.lines().filter(|s| s.starts_with('@')).count(), 1);
     assert!(reply.starts_with("ok\n=> 1 true\nrev 21\n@1 "));
+}
+
+#[test]
+fn large_list_snapshot_budget() {
+    const SNAPSHOTS: u32 = 100;
+
+    #[derive(rust_use_macros::Primitive)]
+    #[primitive(no_actions)]
+    struct LargeList {
+        #[behavior]
+        items: List<u64>,
+    }
+
+    let ui = Ui::new();
+    ui.mount(LargeList {
+        items: List::new((0..100_000).collect()),
+    });
+    let agent = ui.agent();
+    let snapshot = agent.snapshot();
+    assert!(snapshot.to_string().ends_with(" ?query"));
+    assert_eq!(snapshot.to_json()["components"][0]["query"], true);
+    let diff = agent.diff_since(0);
+    assert!(diff.to_string().ends_with(" ?query"));
+    assert_eq!(diff.to_json()["changed"][0]["query"], true);
+
+    let start = Instant::now();
+    for _ in 0..SNAPSHOTS {
+        black_box(agent.snapshot());
+    }
+    let elapsed = start.elapsed();
+    println!("Mean snapshot time: {:?}", elapsed / SNAPSHOTS);
+    assert!(elapsed < Duration::from_millis(100), "took {elapsed:?}");
 }
 
 #[test]

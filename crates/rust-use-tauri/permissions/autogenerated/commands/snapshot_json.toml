@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-snapshot-json"
+description = "Enables the snapshot_json command without any pre-configured scope."
+commands.allow = ["snapshot_json"]
+
+[[permission]]
+identifier = "deny-snapshot-json"
+description = "Denies the snapshot_json command without any pre-configured scope."
+commands.deny = ["snapshot_json"]

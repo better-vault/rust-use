@@ -5,6 +5,18 @@ the format is line-oriented, has no JSON punctuation, and never repeats what the
 knows. The bridge also offers a JSON form of the same data for MCP clients that want structured
 content. The text form is canonical.
 
+## Hello
+
+Send `hello` to read the server's crate version, the `Ui` session id, and its current revision.
+The reply is one line:
+
+```
+rust-use 0.1.1 session 0123456789abcdef rev 7
+```
+
+The session id is a nonzero 64-bit value encoded as 16 lowercase hex digits. It identifies
+one `Ui` instance across connections. `hello` leaves the connection's revision cursor untouched.
+
 ## Snapshot
 
 ```
@@ -51,7 +63,14 @@ rev 9
 
 The bridge remembers the last revision each agent session saw. `diff` with no argument means
 "since my last snapshot, diff or act". `diff <n>` starts from revision `n` and advances the
-session cursor to the returned revision. The CLI saves this revision in `<app>.rev` across invocations.
+session cursor to the returned revision. The CLI saves `<session hex>:<revision>` in
+`<app>.rev` across invocations. Before sending `diff`, it checks the session and revision with
+`hello` on the same connection. A saved revision from a different or unknown session, or one
+ahead of the current revision, triggers `diff 0` and a CLI notice before the reply:
+
+```
+# app restarted; showing everything
+```
 
 ## Act
 

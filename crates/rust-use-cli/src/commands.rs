@@ -1,6 +1,6 @@
 use crate::{
     cli::{Cli, Command},
-    state::Cursor,
+    state::{Cursor, parse_hello},
 };
 use rust_use_agent::{
     ipc::{Client, Endpoint, IpcError, list_endpoints},
@@ -36,8 +36,9 @@ pub(crate) fn run(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
         return Ok(ExitCode::SUCCESS);
     }
     let mut client = connect(cli.app.as_deref())?;
+    let is_diff = matches!(cli.command, Command::Diff);
     let cursor = || Cursor::open(client.endpoint()).map(Some);
-    let (request, cursor) = match cli.command {
+    let (mut request, cursor) = match cli.command {
         Command::Mcp => {
             McpServer::new(Mutex::new(client)).serve_stdio()?;
             return Ok(ExitCode::SUCCESS);
@@ -52,22 +53,45 @@ pub(crate) fn run(cli: Cli) -> Result<ExitCode, Box<dyn Error>> {
             cursor()?,
         ),
         Command::Act { script } => (format!("act {}", script.join(" ")), cursor()?),
-        Command::Diff => {
-            let mut state = Cursor::open(client.endpoint())?;
-            (format!("diff {}", state.revision()?), Some(state))
-        }
+        Command::Diff => ("diff".into(), cursor()?),
         Command::Query { target, text, from } => {
             (query_request(&target, text.as_deref(), from), None)
         }
         Command::Raw { payload } => (payload.join(" "), None),
         Command::List => return Ok(ExitCode::SUCCESS),
     };
-    let reply = client
-        .request(&request)
-        .map_err(|e| format!("{e}; check the app is running with ipc enabled"))?;
-    io::stdout().lock().write_all(reply.as_bytes())?;
-    if let Some(mut cursor) = cursor {
-        cursor.observe(&reply)?;
+    let mut send = |payload: &str| {
+        client
+            .request(payload)
+            .map_err(|e| format!("{e}; check the app is running with ipc enabled"))
+    };
+    let mut restarted = false;
+    let mut state = None;
+    if let Some(cursor) = cursor {
+        let (session, revision) = parse_hello(&send("hello")?)?;
+        if is_diff {
+            let since = match cursor.read()? {
+                Some(saved) if saved.session == Some(session) && saved.revision <= revision => {
+                    saved.revision
+                }
+                Some(_) => {
+                    restarted = true;
+                    0
+                }
+                None => 0,
+            };
+            request = format!("diff {since}");
+        }
+        state = Some((cursor, session));
+    }
+    let reply = send(&request)?;
+    let mut stdout = io::stdout().lock();
+    if restarted {
+        writeln!(stdout, "# app restarted; showing everything")?;
+    }
+    stdout.write_all(reply.as_bytes())?;
+    if let Some((cursor, session)) = state {
+        cursor.observe(session, &reply)?;
     }
     Ok(if reply.starts_with("err") {
         ExitCode::FAILURE

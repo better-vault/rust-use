@@ -176,6 +176,13 @@ impl Agent {
             .unwrap_or((request.trim(), ""));
         let rest = rest.trim();
         match cmd {
+            "hello" if rest.is_empty() => format!(
+                "rust-use {} session {:016x} rev {}",
+                env!("CARGO_PKG_VERSION"),
+                self.ui.session(),
+                self.ui.revision()
+            ),
+            "hello" => "err expected hello".into(),
             "snapshot" if rest.is_empty() || rest == "--verbose" => self
                 .snapshot_with(SnapshotOptions {
                     docs: !rest.is_empty(),
@@ -197,7 +204,7 @@ impl Agent {
                         .map_or_else(|e| format!("err {e}"), |out| out.to_string())
                 },
             ),
-            _ => format!("err unknown command `{cmd}` (try: snapshot, diff, act, query)"),
+            _ => format!("err unknown command `{cmd}` (try: hello, snapshot, diff, act, query)"),
         }
     }
 }

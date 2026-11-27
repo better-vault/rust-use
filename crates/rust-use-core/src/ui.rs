@@ -1,11 +1,16 @@
 use std::{
     any::Any,
-    collections::{BTreeMap, VecDeque},
+    collections::{BTreeMap, VecDeque, hash_map::RandomState},
     fmt,
+    hash::BuildHasher,
     marker::PhantomData,
     num::ParseIntError,
     str::FromStr,
-    sync::{Arc, Mutex, MutexGuard, PoisonError},
+    sync::{
+        Arc, Mutex, MutexGuard, PoisonError,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::SystemTime,
 };
 
 use crate::{
@@ -198,11 +203,29 @@ fn missing(id: ComponentId) -> ResolveError {
 type Hooks<F> = Arc<Mutex<Vec<Arc<F>>>>;
 type Interceptor = dyn Fn(&ActionRequest<'_>) -> Decision + Send + Sync;
 type Subscriber = dyn Fn(&ChangeEvent) + Send + Sync;
-#[derive(Default)]
 struct Inner {
+    session: u64,
     state: Mutex<Registry>,
     interceptors: Hooks<Interceptor>,
     subscribers: Hooks<Subscriber>,
+}
+impl Default for Inner {
+    fn default() -> Self {
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        let session = RandomState::new()
+            .hash_one((
+                SystemTime::now(),
+                std::process::id(),
+                COUNTER.fetch_add(1, Ordering::Relaxed),
+            ))
+            .max(1);
+        Self {
+            session,
+            state: Mutex::default(),
+            interceptors: Arc::default(),
+            subscribers: Arc::default(),
+        }
+    }
 }
 /// Thread-safe registry shared by all its clones.
 ///
@@ -260,6 +283,12 @@ impl Ui {
             id,
             marker: PhantomData,
         }
+    }
+    /// Return the nonzero session id assigned to this registry at creation.
+    ///
+    /// It identifies one `Ui` instance and is shared by its clones. It carries no user identity.
+    pub fn session(&self) -> u64 {
+        self.inner.session
     }
     /// Read the latest global revision.
     pub fn revision(&self) -> u64 {
@@ -581,5 +610,20 @@ fn register<F: ?Sized + Send + Sync + 'static>(hooks: &Hooks<F>, f: Arc<F>) -> S
                 lock(&hooks).retain(|hook| !Arc::ptr_eq(hook, &f));
             }
         })),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Ui;
+
+    #[test]
+    fn session_identifies_the_registry() {
+        let first = Ui::new();
+        let second = Ui::new();
+        assert_ne!(first.session(), 0);
+        assert_ne!(second.session(), 0);
+        assert_ne!(first.session(), second.session());
+        assert_eq!(first.session(), first.clone().session());
     }
 }

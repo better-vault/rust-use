@@ -1,7 +1,7 @@
 //! Drive a live app through independent CLI processes.
 use rust_use_agent::ipc::{Endpoint, Server};
 use rust_use_core::{ActionError, ActionSpec, Args, Behavior, Describe, Primitive, Ui, Value};
-use std::process::Command;
+use std::{fs, process::Command, sync::mpsc, time::Duration};
 
 struct Button(bool);
 impl Primitive for Button {
@@ -65,9 +65,46 @@ fn cli_session() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(run(&["raw", "echo", "two", "words"], 0)?, "two words");
     assert!(run(&["act", "@1", "missing"], 1)?.starts_with("err 1"));
     drop(guard);
+
+    let path = endpoint.revision_path();
+    assert_eq!(
+        fs::read_to_string(&path)?,
+        format!("{:016x}:3", ui.session())
+    );
+    let replacement = Ui::new();
+    replacement.mount(Button(true)).label("Replacement");
+    replacement.mount(Button(true));
+    assert_eq!(replacement.revision(), ui.revision());
+    let (tx, rx) = mpsc::channel();
+    let guard = Server::new(&replacement)
+        .endpoint(endpoint.clone())
+        .observe(move |log| {
+            let _ = tx.send((log.request.to_owned(), log.connection));
+        })
+        .spawn()?;
+
+    let reset = "# app restarted; showing everything\nrev 3\n@1 button \"Replacement\" =true !press\n@2 button =true !press";
+    assert_eq!(run(&["diff"], 0)?, reset);
+    let (request, connection) = rx.recv_timeout(Duration::from_secs(1))?;
+    assert_eq!(request, "hello");
+    assert_eq!(
+        rx.recv_timeout(Duration::from_secs(1))?,
+        ("diff 0".into(), connection)
+    );
+    let saved = format!("{:016x}:3", replacement.session());
+    assert_eq!(fs::read_to_string(&path)?, saved);
+    assert_eq!(run(&["diff"], 0)?, "rev 3");
+    fs::write(&path, format!("{:016x}:4", replacement.session()))?;
+    assert_eq!(run(&["diff"], 0)?, reset);
+    fs::write(&path, "3")?;
+    assert_eq!(run(&["diff"], 0)?, reset);
+    assert_eq!(fs::read_to_string(&path)?, saved);
+
+    drop(guard);
     let diagnostic = run(&["snapshot"], 2)?;
     assert_eq!(diagnostic.lines().count(), 1);
     assert!(diagnostic.contains("ipc"));
-    std::fs::remove_file(endpoint.revision_path())?;
+    fs::remove_file(&path)?;
+    fs::remove_file(path.with_extension("rev.lock"))?;
     Ok(())
 }

@@ -14,7 +14,7 @@ rust-use --app chess act "board move e2e4"
 rust-use --app chess mcp               # the same tools over MCP stdio
 ```
 
-It prints replies exactly as the app sends them, exits 1 on an `err` reply, and keeps `diff` incremental across separate invocations. Any coding agent that can run a shell command, including Claude Code, Codex and Cursor, can drive a rust-use app with it.
+It prints the app's replies, exits 1 on an `err` reply, and keeps `diff` incremental across separate invocations. After an app restart, `diff` prints a notice and shows changes from revision zero. Any coding agent that can run a shell command, including Claude Code, Codex and Cursor, can drive a rust-use app with it.
 
 rust-use is in beta: APIs may change between minor versions until 1.0.
 

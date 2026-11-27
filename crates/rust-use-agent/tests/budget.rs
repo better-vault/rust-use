@@ -286,7 +286,7 @@ fn invalid_scripts_do_not_start_dispatch() {
     }
     assert_eq!(
         agent.handle("help"),
-        "err unknown command `help` (try: snapshot, diff, act, query)"
+        "err unknown command `help` (try: hello, snapshot, diff, act, query)"
     );
 }
 

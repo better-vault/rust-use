@@ -301,3 +301,24 @@ async fn mcp_tools_return_compact_replies() -> Result<(), Box<dyn std::error::Er
     server.waiting().await?;
     Ok(())
 }
+
+#[test]
+fn null_primary_value_is_omitted() {
+    struct Player(Option<String>);
+    impl rust_use_core::Behavior for Player {
+        fn describe(&self, out: &mut rust_use_core::Describe) {
+            out.value(&self.0);
+        }
+    }
+    impl rust_use_core::Primitive for Player {
+        const NAME: &'static str = "player";
+    }
+    let ui = rust_use_core::Ui::new();
+    let player = ui.mount(Player(None));
+    let agent = rust_use_agent::UiAgentExt::agent(&ui);
+    assert_eq!(agent.snapshot().to_string(), "rev 1\n@1 player");
+    player.update(rust_use_core::ChangeSource::Program, |p| {
+        p.0 = Some("Intro".into());
+    });
+    assert_eq!(agent.snapshot().to_string(), "rev 2\n@1 player =Intro");
+}

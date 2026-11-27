@@ -57,7 +57,8 @@ pub(crate) fn component(
         w.write_char(' ')?;
         string(w, s, true)?;
     }
-    if let Some(v) = c.describe.primary() {
+    // A null primary value (an empty `Option`) is "no value": omit it, as for attributes.
+    if let Some(v) = c.describe.primary().filter(|v| !v.is_null()) {
         w.write_str(" =")?;
         value(w, v)?;
     }

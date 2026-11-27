@@ -19,7 +19,8 @@ rev 7
   `@<id> <kind> ["<label>"] [=<value>] [<key>=<value> | <flag>]* [!<action>[(<params>)]]* [?query]`.
   - `<kind>` is the primitive's `NAME`.
   - The label is quoted and is omitted when the component has none.
-  - `=<value>` is the primary value. It is omitted when there is none.
+  - `=<value>` is the primary value. It is omitted when there is none, or when it is `null`
+    (an empty `Option`).
   - Attributes appear in the order the component wrote them. A flag (`Value::Bool(true)`
     written with `Describe::flag`) is a bare key. An attribute whose value is `false` or
     `null` is omitted entirely.

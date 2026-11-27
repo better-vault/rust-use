@@ -92,6 +92,7 @@ cargo add rust-use --features gpui
 | `gpui` | | The GPUI adapter |
 | `ipc` | | A local socket server so the `rust-use` CLI can drive a running app |
 | `mcp` | | The same three tools served over MCP |
+| `tauri` | | A Tauri v2 plugin that serves the `Ui` to the webview and to agents |
 
 ## Usage
 
@@ -129,21 +130,25 @@ agent.act("Mute toggle")?;
 Behaviors embed into a component with `#[behavior]`. Their state and actions merge into the
 component's own.
 
-- **Input**: `Press`, `Toggle`, `Field`
-- **Collections**: `Selection`, `List` (searchable through `query`)
+- **Input**: `Press`, `Toggle`, `Field`, `Range` (a bounded number or a span)
+- **Choosing**: `Selection`, `Tabs`, `Combobox` (pick from a long list, or type your own)
+- **Collections**: `List` (reorder with `move`, search with `query`), `Transfer` (items between
+  named lists, like a kanban board), `Tree` (addressed by path: `select src/agent/format.rs`)
 - **Focus and keys**: `RovingFocus` (lists and 2-D grids), `Typeahead`
 - **Overlays**: `Popup`
 - **Pointer**: `DragDrop`
+
+[`examples/agent_tour.rs`](crates/rust-use/examples/agent_tour.rs) mounts five of them on one
+settings screen and changes them all with a single `act`.
 
 ### Coming next
 
 | Release | Behaviors | Also |
 | --- | --- | --- |
-| **0.2** | `Reorder`, `Tree`, `Range`, `Combobox`, `Tabs` | agent safety (secrets, hidden parts, actions that need a person), a Tauri adapter, atomic `act` |
 | **0.3** | `TextInput`, `InlineEdit`, `Dialog`, `Menu`, `Viewport`, `Resize`, `Toast` | undo for agent changes, smarter refs, `observe`, a testing kit |
 | **Later** | `Canvas`, `CellRange`, `Calendar`, `Area`, `Form`, `Shortcuts`, `Clipboard` | a GPUI component kit, a model inside the app, more adapters, hardware, 1.0 |
 
-Every one is operated by an agent in a single direct action, such as `reorder 3 0` or `expand "src"`.
+Every one is operated by an agent in a single direct action, such as `edit 3 "Groceries"` or `choose "Export"`.
 See **[ROADMAP.md](ROADMAP.md)** for what each will do, and
 [request a behavior](https://github.com/better-vault/rust-use/issues/new?template=feature_request.yml)
 to change the order.
@@ -154,9 +159,9 @@ An agent needs three tools, whichever way it connects:
 
 | Tool | What it does |
 | --- | --- |
-| `snapshot` | Lists every component: ref, kind, label, value and the actions available right now |
-| `act` | Runs one or more steps in order and returns only what changed |
-| `query` | Pages through long option lists, such as a country picker |
+| `snapshot` | Lists components, up to 100 at a time: ref, kind, label, value and the actions available right now |
+| `act` | Runs one or more steps in order and returns only what changed; `atomic` rolls every step back if one fails |
+| `query` | Pages through a long option list, such as a country picker, or finds components by kind or text |
 
 It can connect three ways:
 
@@ -164,6 +169,43 @@ It can connect three ways:
 - **CLI over a local socket**: `rust-use snapshot`, `rust-use act "board move e2e4"`. Any coding
   agent that can run a shell command can use it, including Claude Code, Codex and Cursor.
 - **MCP**: `rust-use mcp` serves the same tools to any MCP client.
+
+### Keeping agents safe
+
+An agent sees and does only what you allow:
+
+```rust
+/// Account settings.
+#[derive(Primitive)]
+struct Account {
+    #[agent(value)]
+    email: String,
+    #[agent(secret)]
+    api_key: String, // an agent sees [redacted]
+}
+
+#[actions]
+impl Account {
+    /// Close the account for good.
+    #[action(confirm = "Close this account")]
+    fn close(&mut self) { /* … */ }
+}
+```
+
+- **`#[agent(secret)]`** shows a field as `[redacted]` to every agent.
+- **`#[primitive(hidden)]`** or `handle.hide_from_agents()` makes a component invisible and
+  unreachable for agents. To an agent it doesn't exist.
+- **`#[action(confirm = "…")]`** marks an action that needs a person. An agent sees it as
+  `!!close`, and it fails with "needs a person" unless the app installs `Approvals`. With
+  `Approvals`, the agent's step waits until someone approves or denies it, or it times out:
+
+```rust
+let approvals = Approvals::new();
+let _guard = ui.require_approval(&approvals);
+// In your UI: list approvals.pending(), then approvals.approve(id) or approvals.deny(id, "not now").
+```
+
+- **`allow`** vetoes any agent action by rule, such as `.allow(|r| r.action != "delete")`.
 
 ## Adding rust-use to an existing GPUI app
 
@@ -240,6 +282,27 @@ my-app mcp` serves it to MCP clients.
 > a `[patch.crates-io]` entry for `gpui` in your workspace `Cargo.toml`. Or skip the `gpui`
 > feature: `rust-use` itself has no UI dependency, and `ui.subscribe(..)` plus your own
 > `cx.notify()` is all the adapter does.
+
+## Tauri apps
+
+```sh
+cargo add rust-use --features tauri,ipc
+```
+
+```rust
+let ui = Ui::new();
+// … mount your primitives …
+tauri::Builder::default()
+    .plugin(rust_use::tauri::builder(ui).serve_ipc("my-app").build())
+    .run(tauri::generate_context!())?;
+```
+
+The plugin gives the webview `snapshot`, `snapshot_json`, `act`, `invoke` and `query` commands, and
+emits `rust-use://changed` whenever the `Ui` changes, so the page re-renders whether a person or an
+agent changed it. The page's buttons call `invoke`, which runs as a user action, so people and
+agents go through the same actions and the same `allow` checks. Add `"rust-use:default"` to your
+window's capability. [The crate README](crates/rust-use-tauri/README.md) has a complete
+plain-JavaScript page.
 
 ## Benchmark
 
